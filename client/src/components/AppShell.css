@@ -113,10 +113,12 @@
   align-items: center;
 }
 
-/* 头像菜单在栏底向上弹出 */
+/* 头像菜单在栏底向上弹出；图标栏仅 56px 宽，须向右展开，否则会溢出屏幕左缘（rail z-index 高于浏览面板，可安全覆盖） */
 .rail .menu {
   top: auto;
+  right: auto;
   bottom: calc(100% + 8px);
+  left: 0;
 }
 
 .shell-body {
