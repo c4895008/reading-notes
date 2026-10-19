@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { listNotes, listTree, type NoteRef, type NoteSummary, type TreeItem } from '../api/notes';
+import { listTags, type Tag } from '../api/tags';
 import { useAuth } from '../auth/AuthContext';
-import { ChevronIcon, PlusIcon, SearchIcon } from '../components/Icons';
+import { ChevronIcon, PlusIcon, SearchIcon, XIcon } from '../components/Icons';
 import { formatTime, fullTime } from '../lib/time';
 import { loadCollapsed, loadLastViewed, loadView, saveCollapsed, saveView, type NotesView } from '../lib/treeState';
 import './Page.css';
@@ -98,7 +99,7 @@ function Retry({ message, onRetry }: { message: string; onRetry: () => void }) {
   );
 }
 
-function ListResults({ q, back, onEmpty }: { q: string; back: string; onEmpty: (empty: boolean) => void }) {
+function ListResults({ q, tag, back, onEmpty }: { q: string; tag: number | null; back: string; onEmpty: (empty: boolean) => void }) {
   const [state, setState] = useState<ListState>({ status: 'loading' });
   const [busy, setBusy] = useState(false);
   const [moreError, setMoreError] = useState<string | null>(null);
@@ -111,7 +112,7 @@ function ListResults({ q, back, onEmpty }: { q: string; back: string; onEmpty: (
     setState((s) => (s.status === 'error' ? { status: 'loading' } : s));
     setBusy(true);
     setMoreError(null);
-    listNotes({ q }, ctrl.signal)
+    listNotes({ q, tag: tag ?? undefined }, ctrl.signal)
       .then((data) => {
         setState({ status: 'ready', items: data.items, page: 1, hasMore: data.has_more, q });
         if (!q) onEmpty(data.items.length === 0);
@@ -123,7 +124,7 @@ function ListResults({ q, back, onEmpty }: { q: string; back: string; onEmpty: (
         if (!ctrl.signal.aborted) setBusy(false);
       });
     return () => ctrl.abort();
-  }, [q, reload, onEmpty]);
+  }, [q, tag, reload, onEmpty]);
 
   async function loadMore() {
     if (state.status !== 'ready') return;
@@ -132,7 +133,7 @@ function ListResults({ q, back, onEmpty }: { q: string; back: string; onEmpty: (
     setBusy(true);
     setMoreError(null);
     try {
-      const data = await listNotes({ q: state.q, page: state.page + 1 }, ctrl.signal);
+      const data = await listNotes({ q: state.q, tag: tag ?? undefined, page: state.page + 1 }, ctrl.signal);
       setState((s) => {
         if (s.status !== 'ready' || s.q !== state.q) return s;
         const seen = new Set(s.items.map((n) => n.id));
@@ -147,7 +148,15 @@ function ListResults({ q, back, onEmpty }: { q: string; back: string; onEmpty: (
 
   if (state.status === 'loading') return <SkeletonList />;
   if (state.status === 'error') return <Retry message={state.message} onRetry={() => setReload((n) => n + 1)} />;
-  if (!state.q && state.items.length === 0) return <EmptyNotes />;
+  if (!state.q && state.items.length === 0) {
+    return tag ? (
+      <div className="notes-state">
+        <p>这个标签下还没有笔记。</p>
+      </div>
+    ) : (
+      <EmptyNotes />
+    );
+  }
   if (state.items.length === 0) {
     return (
       <div className="notes-state">
@@ -170,6 +179,11 @@ function ListResults({ q, back, onEmpty }: { q: string; back: string; onEmpty: (
                   </span>
                 )}
                 {note.depth > 0 && <span className="pill">第 {note.depth + 1} 层</span>}
+                {note.tags.map((t) => (
+                  <span key={t.id} className="pill">
+                    {t.name}
+                  </span>
+                ))}
                 <time dateTime={note.updated_at} title={`最近更新 ${fullTime(note.updated_at)}`}>
                   {formatTime(note.updated_at)}
                 </time>
@@ -319,23 +333,53 @@ export default function NotesList() {
   const userId = user!.user_id;
   const [params, setParams] = useSearchParams();
   const q = params.get('q')?.trim() ?? '';
+  const tagParam = params.get('tag');
+  const tagId = tagParam && /^[1-9]\d*$/.test(tagParam) ? Number(tagParam) : null;
   const [input, setInput] = useState(q);
   const [view, setView] = useState<NotesView>(() => loadView(userId));
   const [empty, setEmpty] = useState(false);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    listTags(ctrl.signal)
+      .then(setAllTags)
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, []);
 
   useEffect(() => {
     const next = input.trim();
     if (next === q) return;
-    const t = setTimeout(() => setParams(next ? { q: next } : {}, { replace: true }), DEBOUNCE_MS);
+    const t = setTimeout(() => {
+      const merged = new URLSearchParams(params);
+      if (next) merged.set('q', next);
+      else merged.delete('q');
+      setParams(merged, { replace: true });
+    }, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [input, q, setParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, q]);
 
   function choose(next: NotesView) {
     setView(next);
     saveView(userId, next);
   }
 
-  const showTools = !empty || Boolean(input.trim()) || Boolean(q);
+  function clearTag() {
+    const merged = new URLSearchParams(params);
+    merged.delete('tag');
+    setParams(merged, { replace: true });
+  }
+
+  const activeTag = tagId !== null ? (allTags.find((t) => t.id === tagId) ?? null) : null;
+  const backParams = new URLSearchParams();
+  if (q) backParams.set('q', q);
+  if (tagId !== null) backParams.set('tag', String(tagId));
+  const backQuery = backParams.toString();
+  const back = `/notes${backQuery ? `?${backQuery}` : ''}`;
+
+  const showTools = !empty || Boolean(input.trim()) || Boolean(q) || tagId !== null;
 
   return (
     <div className="page page-enter">
@@ -372,8 +416,19 @@ export default function NotesList() {
         </div>
       )}
 
-      {q || view === 'list' ? (
-        <ListResults q={q} back={`/notes${q ? `?${new URLSearchParams({ q })}` : ''}`} onEmpty={setEmpty} />
+      {tagId !== null && (
+        <div className="notes-filter">
+          <span className="pill pill-accent">
+            标签 · {activeTag?.name ?? '…'}
+            <button type="button" className="pill-x" aria-label="清除标签筛选" onClick={clearTag}>
+              <XIcon size={12} />
+            </button>
+          </span>
+        </div>
+      )}
+
+      {q || tagId !== null || view === 'list' ? (
+        <ListResults q={q} tag={tagId} back={back} onEmpty={setEmpty} />
       ) : (
         <NoteTree userId={userId} onEmpty={setEmpty} />
       )}

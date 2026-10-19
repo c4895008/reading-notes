@@ -1,5 +1,6 @@
 import { request } from './client';
 import type { TalkStatus, TalkSummary } from './discussions';
+import type { NoteTag } from './tags';
 
 export type NoteRef = { id: number; title: string };
 
@@ -12,6 +13,7 @@ export type NoteSummary = {
   depth: number;
   path?: NoteRef[];
   discussion_status: TalkStatus | null;
+  tags: NoteTag[];
   created_at: string;
   updated_at: string;
 };
@@ -24,6 +26,7 @@ export type Note = {
   title: string;
   quote: string | null;
   content: string;
+  tags: NoteTag[];
   created_at: string;
   updated_at: string;
   ancestors: NoteRef[];
@@ -48,9 +51,10 @@ export const NOTE_LIMITS = { title: 80, quote: 2000, content: 20000 } as const;
 
 const notePath = (id: string | number) => `/notes/${encodeURIComponent(id)}`;
 
-export function listNotes({ q, page }: { q?: string; page?: number }, signal?: AbortSignal) {
+export function listNotes({ q, page, tag }: { q?: string; page?: number; tag?: number }, signal?: AbortSignal) {
   const params = new URLSearchParams({ view: 'list' });
   if (q) params.set('q', q);
+  if (tag) params.set('tag', String(tag));
   if (page && page > 1) params.set('page', String(page));
   return request<NotePage>(`/notes?${params}`, { signal });
 }

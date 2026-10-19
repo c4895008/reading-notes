@@ -128,3 +128,18 @@ export const PenIcon = ({ size = 16 }: IconProps) => (
     <path d="m13.5 7 3 3" />
   </svg>
 );
+
+export const MoreIcon = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <circle cx="12" cy="5.5" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="18.5" r="0.9" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const XIcon = ({ size = 14 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </svg>
+);
+

@@ -108,6 +108,7 @@ a.note-item:hover {
 .note-meta {
   grid-area: meta;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   color: var(--faint);
@@ -129,6 +130,37 @@ a.note-item:hover {
   border-color: transparent;
   background: var(--accent-soft);
   color: var(--accent-deep);
+}
+
+.notes-filter {
+  display: flex;
+  align-items: center;
+  margin: -4px 0 12px;
+}
+
+.notes-filter .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.pill-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pill-x:hover {
+  background: rgba(30, 30, 28, 0.08);
 }
 
 .tree-depth {
@@ -941,6 +973,12 @@ a.note-item:hover {
 
 .editor-preview {
   min-height: 320px;
+}
+
+.editor-tags {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
 }
 
 @media (max-width: 768px) {

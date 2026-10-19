@@ -1,0 +1,340 @@
+/* 标签胶囊（列表卡片、阅读页、编辑器共用） */
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 12em;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: var(--text-aux);
+  line-height: 1.6;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.tag-pill-name {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  text-overflow: ellipsis;
+}
+
+a.tag-pill-name:hover {
+  color: var(--accent-deep);
+  text-decoration: none;
+}
+
+.tag-pill button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tag-pill button:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ink);
+}
+
+a.tag-pill:hover {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* ---------- 浏览面板的标签区块 ---------- */
+
+.tagsec {
+  margin-top: 14px;
+  padding: 12px 8px 4px;
+  border-top: 1px solid var(--line);
+}
+
+.tagsec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 6px;
+}
+
+.tagsec-title {
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.tagsec-new {
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+}
+
+.tagsec-addrow {
+  padding: 0 4px 6px;
+}
+
+.tagsec-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tagsec-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 36px;
+  padding: 2px 4px 2px 2px;
+  border-radius: var(--radius-sm);
+}
+
+.tagsec-row:hover {
+  background: var(--surface-2);
+}
+
+.tagsec-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 4px 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--text-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tagsec-row.is-editing {
+  background: transparent;
+}
+
+.tagsec-row.is-editing .tagsec-input {
+  flex: 1;
+}
+
+.tagsec-row:hover .tagsec-main {
+  color: var(--ink);
+}
+
+.tagsec-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagsec-count {
+  flex: none;
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-variant-numeric: tabular-nums;
+}
+
+.tagsec-more {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  color: var(--muted);
+  opacity: 0;
+}
+
+.tagsec-row:hover .tagsec-more,
+.tagsec-more[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.tagsec-menu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% - 4px);
+  right: 4px;
+  min-width: 116px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  box-shadow: 0 10px 30px rgba(30, 30, 28, 0.1);
+}
+
+.tagsec-menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--text-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tagsec-menu button:hover {
+  background: var(--accent-faint);
+  color: var(--accent);
+}
+
+.tagsec-menu button.is-danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tagsec-input {
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-ui);
+  outline: none;
+}
+
+.tagsec-input:focus {
+  border-color: var(--accent);
+}
+
+.tagsec-msg {
+  padding: 4px 10px 8px;
+  color: var(--muted);
+  font-size: var(--text-ui-sm);
+  overflow-wrap: anywhere;
+}
+
+.tagsec-msg.is-error {
+  color: var(--danger);
+}
+
+.tagsec-hint {
+  padding: 2px 10px 8px;
+  color: var(--faint);
+  font-size: var(--text-ui-sm);
+}
+
+/* ---------- 笔记页的打标签 ---------- */
+
+.tagedit {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tagedit-label {
+  flex: none;
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.tagedit-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tagedit-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 140px;
+}
+
+.tagedit-input {
+  width: 100%;
+  min-height: 30px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-ui);
+  outline: none;
+}
+
+.tagedit-input::placeholder {
+  color: var(--faint);
+}
+
+.tagedit-input:focus {
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+
+.tagedit-drop {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  max-width: 260px;
+  max-height: 240px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  box-shadow: 0 10px 30px rgba(30, 30, 28, 0.1);
+  list-style: none;
+}
+
+.tagedit-drop button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--text-ui);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagedit-drop button:hover,
+.tagedit-drop button.is-active {
+  background: var(--accent-faint);
+  color: var(--accent);
+}
+
+.tagedit-drop .is-create {
+  color: var(--accent);
+}
+
+.tagedit-drop .tagedit-empty {
+  padding: 6px 10px;
+  color: var(--faint);
+  font-size: var(--text-ui-sm);
+}

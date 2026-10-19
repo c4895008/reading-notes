@@ -4,6 +4,7 @@ import { ApiError } from '../api/client';
 import { listNotes, type NoteSummary } from '../api/notes';
 import { formatTime, fullTime } from '../lib/time';
 import { ChevronIcon, PlusIcon } from './Icons';
+import TagSection from './TagSection';
 import './NotesExplorer.css';
 
 type State =
@@ -105,6 +106,8 @@ export default function NotesExplorer({ currentId = null }: { currentId?: number
           <ChevronIcon size={14} />
         </Link>
       )}
+
+      <TagSection />
     </div>
   );
 }

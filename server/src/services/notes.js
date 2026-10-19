@@ -3,6 +3,7 @@ import { AppError } from '../errors.js';
 import { STATUS_NAME } from './discussion.js';
 import { markdownToText } from './markdown.js';
 import { ancestorsOf, buildIndex, childrenOf, planCreate, planDelete, planMove, planPromote, preorder } from './tree.js';
+import { listNoteTags, tagsForNotes } from './tags.js';
 
 export const ACTIVE = 1;
 export const DELETED = 2;
@@ -57,13 +58,17 @@ async function applyMoves(conn, userId, moves) {
   }
 }
 
-export async function listNotes(userId, { q, page, pageSize }) {
+export async function listNotes(userId, { q, page, pageSize, tag }) {
   const where = ['n.user_id = ?', 'n.status = ?'];
   const params = [userId, ACTIVE];
   if (q) {
     const like = `%${escapeLike(q)}%`;
     where.push('(n.title LIKE ? OR n.quote LIKE ? OR n.content_text LIKE ?)');
     params.push(like, like, like);
+  }
+  if (tag) {
+    where.push('EXISTS (SELECT 1 FROM note_tag nt WHERE nt.note_id = n.id AND nt.tag_id = ?)');
+    params.push(tag);
   }
   const [[rows], index] = await Promise.all([
     pool.query(
@@ -80,6 +85,7 @@ export async function listNotes(userId, { q, page, pageSize }) {
     ),
     loadIndex(pool, userId),
   ]);
+  const tagMap = await tagsForNotes(rows.slice(0, pageSize).map((r) => r.id));
   return {
     items: rows.slice(0, pageSize).map((row) => {
       const ancestors = ancestorsOf(index, row.id);
@@ -91,6 +97,7 @@ export async function listNotes(userId, { q, page, pageSize }) {
         depth: ancestors.length,
         ...(q ? { path: ancestors.map(brief) } : {}),
         discussion_status: STATUS_NAME[row.discussion_status] ?? null,
+        tags: tagMap.get(row.id) ?? [],
         created_at: row.created_at,
         updated_at: row.updated_at,
       };
@@ -126,7 +133,7 @@ async function findOwnRow(userId, id, conn = pool) {
 }
 
 export async function getNote(userId, id) {
-  const [row, index] = await Promise.all([findOwnRow(userId, id), loadIndex(pool, userId)]);
+  const [row, index, tags] = await Promise.all([findOwnRow(userId, id), loadIndex(pool, userId), listNoteTags(userId, id)]);
   if (!row || !index.byId.has(row.id)) throw noteNotFound();
   const ancestors = ancestorsOf(index, row.id);
   return {
@@ -135,6 +142,7 @@ export async function getNote(userId, id) {
     title: row.title,
     quote: row.quote,
     content: row.content,
+    tags,
     created_at: row.created_at,
     updated_at: row.updated_at,
     ancestors: ancestors.map(brief),

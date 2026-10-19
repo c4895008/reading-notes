@@ -14,6 +14,7 @@ import {
   promoteNote,
   updateNote,
 } from '../services/notes.js';
+import { findTag, setNoteTags, tagNotFound } from '../services/tags.js';
 import { assertValid, charLength, parseNoteInput, readBody } from '../validate.js';
 
 export const notesRouter = Router();
@@ -70,10 +71,23 @@ notesRouter.get(
       page_size: Number.isNaN(pageSize) || pageSize > PAGE_SIZE.max ? `每页 1–${PAGE_SIZE.max} 条` : null,
     });
     const userId = req.user.id;
-    const data = view === 'tree' ? await listTree(userId) : await listNotes(userId, { q: query, page, pageSize });
+    const data =
+      view === 'tree'
+        ? await listTree(userId)
+        : await listNotes(userId, { q: query, page, pageSize, tag: await ownedTagId(req) });
     res.json({ data });
   }),
 );
+
+// tag 查询参数：必须是本人拥有的标签，否则按不存在处理
+async function ownedTagId(req) {
+  const raw = req.query.tag;
+  if (raw === undefined || raw === '') return undefined;
+  if (typeof raw !== 'string' || !/^[1-9]\d{0,15}$/.test(raw)) throw validationError({ tag: '标签不正确' });
+  const tag = await findTag(req.user.id, Number(raw));
+  if (!tag) throw tagNotFound();
+  return tag.id;
+}
 
 notesRouter.post(
   '/',
@@ -104,6 +118,20 @@ notesRouter.put(
     const id = noteId(req);
     const input = parseNoteInput(readBody(req.body, NOTE_FIELDS));
     res.json({ data: { note: await updateNote(req.user.id, id, input) } });
+  }),
+);
+
+notesRouter.put(
+  '/:id/tags',
+  ah(async (req, res) => {
+    const id = noteId(req);
+    const { tag_ids: raw } = readBody(req.body, ['tag_ids']);
+    if (!Array.isArray(raw) || raw.some((v) => !Number.isSafeInteger(v) || v <= 0)) {
+      throw validationError({ tag_ids: '标签列表格式不正确' });
+    }
+    if (raw.length > 20) throw validationError({ tag_ids: '一条笔记最多 20 个标签' });
+    const tags = await setNoteTags(req.user.id, id, [...new Set(raw)]);
+    res.json({ data: { tags } });
   }),
 );
 

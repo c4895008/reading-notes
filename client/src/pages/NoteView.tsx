@@ -12,6 +12,7 @@ import { NoteBody, QuoteBlock } from '../components/NoteContent';
 import NotesExplorer from '../components/NotesExplorer';
 import InviteDialog, { type InviteTarget } from '../components/InviteDialog';
 import NotePicker from '../components/NotePicker';
+import TagEditor from '../components/TagEditor';
 import { useBadgeToast, useToast } from '../components/Toast';
 import { formatTime, fullTime } from '../lib/time';
 import { expandNodes, saveLastViewed } from '../lib/treeState';
@@ -340,6 +341,11 @@ export default function NoteView() {
               <TimeMeta note={note} />
             </div>
             <h1 className="reading-title">{note.title}</h1>
+            <TagEditor
+              noteId={note.id}
+              tags={note.tags}
+              onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
+            />
             {note.quote && <QuoteBlock text={note.quote} />}
             {note.content ? (
               <NoteBody source={note.content} />

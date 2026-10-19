@@ -2,12 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Textare
 import { useBlocker, useLocation, useNavigate, useParams, useSearchParams, type BlockerFunction } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { createNote, getNote, NOTE_LIMITS, promoteNote, updateNote, type NoteInput, type NoteRef } from '../api/notes';
+import type { NoteTag } from '../api/tags';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useExplorerContent } from '../components/Explorer';
 import { BackIcon } from '../components/Icons';
 import { NoteBody, QuoteBlock } from '../components/NoteContent';
 import NotesExplorer from '../components/NotesExplorer';
 import { useToast } from '../components/Toast';
+import TagEditor from '../components/TagEditor';
 import { randomKey } from '../lib/id';
 import { NoteMissing, ReadingSkeleton } from './NoteView';
 import './Page.css';
@@ -92,6 +94,7 @@ export default function NoteEditor({ refine, under = null }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [editTags, setEditTags] = useState<NoteTag[]>([]);
 
   const allowLeave = useRef(false);
   const idempotency = useRef<{ signature: string; key: string } | null>(null);
@@ -112,6 +115,7 @@ export default function NoteEditor({ refine, under = null }: Props) {
           const loaded = { title: note.title, quote: note.quote ?? '', content: note.content };
           setInitial(loaded);
           setDraft(loaded);
+          setEditTags(note.tags);
         } else {
           setTarget({ id: note.id, title: note.title });
         }
@@ -333,6 +337,12 @@ export default function NoteEditor({ refine, under = null }: Props) {
             </div>
           </div>
         </form>
+      )}
+
+      {isEdit && loadState === 'ready' && editId !== null && (
+        <div className="editor-tags">
+          <TagEditor noteId={editId} tags={editTags} onChange={setEditTags} />
+        </div>
       )}
 
       {loadState === 'ready' && pane === 'preview' && (

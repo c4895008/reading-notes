@@ -84,6 +84,15 @@ export function parseNoteInput(body) {
   return { title, quote, content };
 }
 
+export const TAG_NAME_MAX = 40;
+export function checkTagName(value) {
+  if (typeof value !== 'string' || !value.trim()) throw validationError({ name: '请填写标签名' });
+  const name = value.trim();
+  if (charLength(name) > TAG_NAME_MAX) throw validationError({ name: `标签名最多 ${TAG_NAME_MAX} 字` });
+  if (CONTROL_RE.test(name)) throw validationError({ name: '标签名包含不支持的字符' });
+  return name;
+}
+
 export function assertValid(fields) {
   const errors = Object.fromEntries(Object.entries(fields).filter(([, msg]) => msg));
   if (Object.keys(errors).length) throw validationError(errors);
