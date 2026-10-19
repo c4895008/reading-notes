@@ -1,0 +1,148 @@
+.quote-block {
+  margin: 0;
+  padding: 14px 20px;
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-faint);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md > :last-child {
+  margin-bottom: 0;
+}
+
+.md p,
+.md ul,
+.md ol,
+.md blockquote,
+.md pre,
+.md table {
+  margin: 0 0 1em;
+}
+
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  margin: 1.6em 0 0.6em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.md h2 {
+  font-size: 22px;
+}
+
+.md h3 {
+  font-size: 19px;
+}
+
+.md h4,
+.md h5,
+.md h6 {
+  font-size: var(--text-body);
+}
+
+.md ul,
+.md ol {
+  padding-left: 1.6em;
+}
+
+.md li + li {
+  margin-top: 0.2em;
+}
+
+.md blockquote {
+  padding: 10px 16px;
+  border-left: 2px solid var(--line);
+  background: rgba(30, 30, 28, 0.03);
+  color: var(--ink-soft);
+}
+
+.md blockquote > :last-child,
+.md li > :last-child {
+  margin-bottom: 0;
+}
+
+.md code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(30, 30, 28, 0.06);
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+}
+
+.md pre {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(30, 30, 28, 0.05);
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.md pre code {
+  padding: 0;
+  background: none;
+  font-size: 14px;
+  white-space: pre;
+}
+
+.md hr {
+  margin: 2em auto;
+  width: 40%;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.md a {
+  text-decoration: underline;
+  text-decoration-color: rgba(58, 110, 165, 0.35);
+  text-underline-offset: 3px;
+}
+
+.md table {
+  display: block;
+  max-width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  overflow-x: auto;
+}
+
+.md th,
+.md td {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.md th {
+  background: rgba(30, 30, 28, 0.03);
+  font-weight: 600;
+}
+
+.md .md-align-center {
+  text-align: center;
+}
+
+.md .md-align-right {
+  text-align: right;
+}

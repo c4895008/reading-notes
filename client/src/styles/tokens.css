@@ -1,0 +1,65 @@
+:root {
+  /* 画布与表面 —— 中性灰白客户端风格 */
+  --paper: #f7f7f5;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-2: #fafaf9;
+  --sidebar: #f2f2f0;
+  --sidebar-active: #ffffff;
+
+  /* 墨色阶梯 */
+  --ink: #1e1e1c;
+  --ink-hover: #35352f;
+  --ink-soft: #4a4a44;
+  --muted: #75756d;
+  --faint: #a8a89e;
+
+  /* 线条 */
+  --line: rgba(30, 30, 28, 0.1);
+  --line-strong: rgba(30, 30, 28, 0.18);
+
+  /* 强调色 —— 克制的蓝，用于链接/焦点/选中 */
+  --accent: #3a6ea5;
+  --accent-deep: #2d587f;
+  --accent-soft: #e9f0f7;
+  --accent-faint: #f3f7fb;
+
+  /* 状态色 */
+  --success: #2e7d4f;
+  --success-soft: #e7f2eb;
+  --danger: #a04337;
+  --danger-deep: #823327;
+  --danger-soft: #f8edeb;
+  --warning-bg: #f4ead2;
+  --warning-ink: #6d5a1e;
+
+  /* 字体：标题与正文统一无衬线 */
+  --font-display: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+  --font-sans: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Hiragino Sans GB', 'Microsoft YaHei',
+    'Noto Sans SC', system-ui, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-body: 17px;
+  --leading-body: 1.9;
+  --text-ui: 14px;
+  --text-ui-sm: 13px;
+  --text-aux: 12px;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-page: 240ms;
+  --dur-layer: 200ms;
+
+  /* 客户端外壳尺寸 */
+  --rail-width: 56px;
+  --explorer-width: 248px;
+  --nav-height: 56px;
+  --tabbar-height: 64px;
+  --content-width: 760px;
+  --touch: 40px;
+}

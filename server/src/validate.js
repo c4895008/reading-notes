@@ -1,0 +1,90 @@
+import { AppError, validationError } from './errors.js';
+
+// 只接受声明过的字段，未知字段直接拒绝而非静默忽略
+export function readBody(body, allowed) {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    throw new AppError(400, 'VALIDATION_ERROR', '请求参数不正确');
+  }
+  const unknown = Object.keys(body).filter((k) => !allowed.includes(k));
+  if (unknown.length) {
+    throw new AppError(400, 'VALIDATION_ERROR', `不支持的字段：${unknown.join('、')}`, { unknown });
+  }
+  return body;
+}
+
+export const charLength = (s) => [...s].length;
+
+const USERNAME_RE = /^[A-Za-z0-9_]{3,20}$/;
+const CONTROL_RE = /[\u0000-\u001f\u007f]/;
+
+export function checkUsername(value) {
+  if (typeof value !== 'string' || !value) return '请填写用户名';
+  if (!USERNAME_RE.test(value)) return '用户名为 3–20 位字母、数字或下划线';
+  return null;
+}
+
+export function checkPassword(value) {
+  if (typeof value !== 'string' || !value) return '请填写密码';
+  if (value.length < 8) return '密码至少 8 位';
+  // bcrypt 只取前 72 字节，超出部分会被静默截断
+  if (value.length > 64 || Buffer.byteLength(value, 'utf8') > 72) return '密码最长 64 位';
+  return null;
+}
+
+export function checkNickname(value) {
+  if (typeof value !== 'string') return '昵称格式不正确';
+  const v = value.trim();
+  if (!v) return '请填写昵称';
+  if (charLength(v) > 20) return '昵称最多 20 个字';
+  if (CONTROL_RE.test(v)) return '昵称包含不支持的字符';
+  return null;
+}
+
+export const NOTE_LIMITS = { title: 80, quote: 2000, content: 20000 };
+// 引文与正文允许换行与制表符
+const MULTILINE_CONTROL_RE = /[\u0000-\u0008\u000b-\u001f\u007f]/;
+const normalizeNewlines = (s) => s.replace(/\r\n?/g, '\n');
+
+// 校验并规整笔记三字段；返回可直接入库的值
+export function parseNoteInput(body) {
+  const errors = {};
+  let title = null;
+  let quote = null;
+  let content = '';
+
+  if (typeof body.title !== 'string' || !body.title.trim()) errors.title = '请填写标题';
+  else {
+    title = body.title.trim();
+    if (charLength(title) > NOTE_LIMITS.title) errors.title = `标题最多 ${NOTE_LIMITS.title} 字`;
+    else if (CONTROL_RE.test(title)) errors.title = '标题包含不支持的字符';
+  }
+
+  if (body.quote !== undefined && body.quote !== null) {
+    if (typeof body.quote !== 'string') errors.quote = '引文格式不正确';
+    else {
+      quote = normalizeNewlines(body.quote).trim() || null;
+      if (quote && charLength(quote) > NOTE_LIMITS.quote) errors.quote = `引文最多 ${NOTE_LIMITS.quote} 字`;
+      else if (quote && MULTILINE_CONTROL_RE.test(quote)) errors.quote = '引文包含不支持的字符';
+    }
+  }
+
+  if (body.content !== undefined && body.content !== null) {
+    if (typeof body.content !== 'string') errors.content = '正文格式不正确';
+    else {
+      // 保留行首缩进，Markdown 代码块与列表依赖它
+      content = normalizeNewlines(body.content);
+      if (!content.trim()) content = '';
+      else content = content.replace(/^\n+/, '').trimEnd();
+      if (charLength(content) > NOTE_LIMITS.content) errors.content = `正文最多 ${NOTE_LIMITS.content} 字`;
+      else if (MULTILINE_CONTROL_RE.test(content)) errors.content = '正文包含不支持的字符';
+    }
+  }
+
+  assertValid(errors);
+  return { title, quote, content };
+}
+
+export function assertValid(fields) {
+  const errors = Object.fromEntries(Object.entries(fields).filter(([, msg]) => msg));
+  if (Object.keys(errors).length) throw validationError(errors);
+}

@@ -1,0 +1,121 @@
+.exh {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 12px 8px 16px;
+}
+
+.exh-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* 右侧为外壳的折叠钮留位 */
+  padding: 0 44px 8px 8px;
+  background: var(--surface);
+}
+
+.exh-title {
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.exh-new {
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+}
+
+.exh-list {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exh-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  transition: background-color 120ms var(--ease), color 120ms var(--ease);
+}
+
+.exh-row:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.exh-row[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.exh-row[aria-current='page'] .exh-row-title {
+  font-weight: 600;
+}
+
+.exh-row-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exh-row time {
+  flex: none;
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-variant-numeric: tabular-nums;
+}
+
+.exh-row[aria-current='page'] time {
+  color: var(--accent);
+}
+
+.exh-row.is-skeleton {
+  min-height: 36px;
+  padding: 10px;
+}
+
+.exh-row.is-skeleton .sk-line {
+  width: 70%;
+  height: 12px;
+}
+
+.exh-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: var(--text-ui-sm);
+}
+
+.exh-more:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.exh-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 10px;
+  color: var(--muted);
+  font-size: var(--text-ui-sm);
+  overflow-wrap: anywhere;
+}

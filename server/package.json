@@ -1,0 +1,28 @@
+{
+  "name": "reading-notes-server",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch-path=src --watch-path=.env src/index.js",
+    "start": "node src/index.js",
+    "migrate": "node src/db/migrate.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "backup": "bash scripts/backup.sh",
+    "test:int": "DB_NAME=reading_notes_test node src/db/migrate.js && DB_NAME=reading_notes_test node --test --test-concurrency=1 \"test-int/**/*.test.js\"",
+    "reset-password": "node scripts/reset-password.mjs",
+    "restore": "bash scripts/restore.sh"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
+    "markdown-it": "^14.3.3",
+    "multer": "^2.4.0",
+    "mysql2": "^3.12.0"
+  }
+}

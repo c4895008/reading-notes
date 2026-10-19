@@ -1,0 +1,174 @@
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.badge-chip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent-faint);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+/* 视觉 24px，触控热区扩到 40px */
+.badge-chip::after {
+  position: absolute;
+  inset: -8px;
+  content: '';
+}
+
+.badge-chip:hover {
+  background: var(--accent-soft);
+}
+
+.badge-dialog-body {
+  text-align: center;
+}
+
+.badge-medal {
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 12px;
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius-pill);
+  background: var(--accent-faint);
+  color: var(--accent);
+}
+
+.badge-medal.is-locked {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--faint);
+}
+
+.badge-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0 0;
+  text-align: left;
+}
+
+.badge-facts div {
+  display: grid;
+  grid-template-columns: 5em minmax(0, 1fr);
+  gap: 12px;
+}
+
+.badge-facts dt {
+  color: var(--muted);
+  font-size: var(--text-ui-sm);
+}
+
+.badge-facts dd {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.badge-locked-note {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: var(--text-ui-sm);
+}
+
+.badge-dialog .confirm-actions {
+  justify-content: center;
+}
+
+/* 设置页徽章墙：一排 4 枚，移动端 2×2 */
+.badge-wall {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.badge-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 18px 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 150ms var(--ease);
+}
+
+.badge-tile:hover {
+  border-color: var(--accent-soft);
+}
+
+.badge-tile .badge-medal {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+}
+
+.badge-tile-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.badge-tile-sub {
+  color: var(--muted);
+  font-size: var(--text-aux);
+  line-height: 1.5;
+}
+
+.badge-tile.is-locked {
+  background: transparent;
+}
+
+.badge-tile.is-locked .badge-tile-name {
+  color: var(--muted);
+}
+
+.badge-tile-sk {
+  height: 148px;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, rgba(30, 30, 28, 0.05), rgba(30, 30, 28, 0.09), rgba(30, 30, 28, 0.05));
+  background-size: 200% 100%;
+  animation: badge-sk 1.4s ease-in-out infinite;
+}
+
+@keyframes badge-sk {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.badge-wall-empty {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: var(--text-ui-sm);
+}
+
+@media (max-width: 768px) {
+  .badge-wall {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

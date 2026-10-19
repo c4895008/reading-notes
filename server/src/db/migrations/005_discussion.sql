@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS discussion (
+  id                    BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  note_id               BIGINT UNSIGNED  NOT NULL COMMENT '一条笔记只有一场笔谈；笔记软删后笔谈保留',
+  initiator_id          BIGINT UNSIGNED  NOT NULL COMMENT '= 笔记作者；唯一有权管理状态与邀请',
+  status                TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1 进行中 / 2 已完结 / 3 已存档',
+  ended_at              DATETIME(3)      NULL,
+  archived_at           DATETIME(3)      NULL,
+  snapshot_note_title   VARCHAR(80)      NOT NULL COMMENT '以下快照字段创建后只读',
+  snapshot_note_quote   TEXT             NULL,
+  snapshot_note_content MEDIUMTEXT       NOT NULL,
+  snapshot_ancestors    JSON             NOT NULL COMMENT '根 → 近，元素 { title, quote, content }',
+  captured_at           DATETIME(3)      NOT NULL,
+  last_message_at       DATETIME(3)      NULL COMMENT '列表排序；无消息时按 created_at',
+  created_at            DATETIME(3)      NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_discussion_note (note_id),
+  KEY idx_discussion_initiator (initiator_id),
+  CONSTRAINT fk_discussion_note FOREIGN KEY (note_id) REFERENCES note (id),
+  CONSTRAINT fk_discussion_initiator FOREIGN KEY (initiator_id) REFERENCES `user` (id),
+  CONSTRAINT ck_discussion_status CHECK (status IN (1, 2, 3))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
