@@ -1,90 +1,80 @@
-/* 贯穿式笔记链：祖先 → 当前 → 后代，一条圆点线串起来 */
+/* 笔记链：每条笔记一张卡，子级缩进，折线从父卡底部接到子卡左侧 */
 .thread {
-  --step: 26px;
-  margin: 0;
+  --step: 28px;
+  --elbow: 31px;
+  --wire: 1.5px solid var(--line-strong);
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.thread-root {
-  margin: 0 0 4px calc(var(--step) / 2 + 10px);
-  color: var(--faint);
-  font-size: var(--text-aux);
+.thread-children {
+  margin: 0;
+  padding: 0 0 0 var(--step);
+  list-style: none;
 }
 
-.thread-row {
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-}
-
-.thread-indent {
-  flex: none;
-  width: calc(var(--depth) * var(--step));
-}
-
-.thread-node {
+.thread-children > li {
   position: relative;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--step);
+  padding-top: 10px;
 }
 
-/* 竖线：穿过每个圆点 */
-.thread-node::before {
+/* 折线：从父卡底部竖下，圆角拐进本卡 */
+.thread-children > li::before {
   position: absolute;
   top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  margin-left: -1px;
-  background: rgba(30, 30, 28, 0.12);
+  left: calc(var(--step) / -2);
+  width: calc(var(--step) / 2);
+  height: var(--elbow);
+  border-bottom: var(--wire);
+  border-left: var(--wire);
+  border-bottom-left-radius: 8px;
   content: '';
 }
 
-.thread-dot {
-  position: relative;
-  z-index: 1;
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: var(--muted);
+/* 后面还有兄弟时，竖线继续往下接 */
+.thread-children > li:not(:last-child)::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--step) / -2);
+  border-left: var(--wire);
+  content: '';
 }
 
-.thread-row.is-current .thread-dot {
-  width: 11px;
-  height: 11px;
-  background: var(--accent);
+/* 拐点对齐正文卡的元信息行 */
+.thread-children > li.is-current {
+  --elbow: 53px;
 }
 
-/* 当前行的线上下都出头，读起来更像时间轴 */
-.thread-row.is-current .thread-node::before {
-  background: var(--accent-faint);
+.thread-children.is-flat {
+  padding-left: 0;
 }
 
-.thread-card {
+.thread-children.is-flat > li::before,
+.thread-children.is-flat > li::after {
+  display: none;
+}
+
+.thread-node {
   display: flex;
-  flex: 1;
   min-width: 0;
   align-items: center;
   gap: 10px;
-  margin: 2px 0;
-  padding: 8px 14px;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
+  background: var(--surface);
   color: var(--ink-soft);
-  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+  transition: border-color 160ms var(--ease), color 160ms var(--ease);
 }
 
-.thread-card:hover {
-  background: var(--surface);
+.thread-node:hover {
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 
-.thread-card-title {
+.thread-node-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -94,7 +84,7 @@
   white-space: nowrap;
 }
 
-.thread-card time {
+.thread-node time {
   flex: none;
   color: var(--faint);
   font-size: var(--text-aux);
@@ -111,39 +101,28 @@
   white-space: nowrap;
 }
 
-/* 当前笔记的正文卡片挂在这条行里，与上下圆点对齐 */
-.thread-current {
-  flex: 1;
-  min-width: 0;
-  margin: 6px 0;
-}
-
 .thread-current .reading-card {
   margin: 0;
 }
 
-/* 后代区底部的补充入口，与链条对齐 */
-.thread-add {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  margin: 6px 0 0;
-  padding: 8px 14px;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius);
-  color: var(--muted);
-  font-size: var(--text-ui-sm);
-  transition: color 160ms var(--ease), border-color 160ms var(--ease);
+/* 处在链条中时才强调当前卡，孤立笔记保持原样 */
+.thread-children > li.is-current > .thread-current .reading-card,
+.thread > li.is-current:has(> .thread-children) > .thread-current .reading-card {
+  border-color: var(--accent);
 }
 
-.thread-add:hover {
-  border-color: var(--accent);
-  color: var(--ink);
+@media (max-width: 768px) {
+  .thread-children > li.is-current {
+    --elbow: 43px;
+  }
 }
 
 @media (max-width: 600px) {
   .thread {
-    --step: 20px;
+    --step: 18px;
+  }
+
+  .thread-children > li::before {
+    border-bottom-left-radius: 6px;
   }
 }

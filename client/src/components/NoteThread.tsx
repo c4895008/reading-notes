@@ -1,73 +1,83 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { NoteRef, TreeItem } from '../api/notes';
 import { formatTime, fullTime } from '../lib/time';
-import { PlusIcon } from './Icons';
 import './NoteThread.css';
 
 type Props = {
   ancestors: NoteRef[];
-  descendants: TreeItem[];
+  currentId: number;
+  tree: TreeItem[];
   back: string;
   cap: number;
-  addChild?: ReactNode;
   children: ReactNode;
 };
 
-// 贯穿式笔记链：祖先是紧凑行，当前笔记是完整卡片，后代按绝对层级缩进
-export default function NoteThread({ ancestors, descendants, back, cap, addChild, children }: Props) {
-  const currentDepth = ancestors.length;
-  const indent = (depth: number) => ({ '--depth': Math.min(depth, cap) }) as CSSProperties;
+type Branch = { item: TreeItem; children: Branch[] };
 
-  return (
-    <ul className="thread">
-      {ancestors.length === 0 && <li className="thread-root">顶层笔记</li>}
+// listTree 是先序扁平序列：当前笔记之后、深度更深的连续节点就是它的子树
+function subtree(tree: TreeItem[], id: number): Branch[] {
+  const start = tree.findIndex((n) => n.id === id);
+  if (start < 0) return [];
+  const roots: Branch[] = [];
+  const stack: Branch[] = [];
+  for (let i = start + 1; i < tree.length && tree[i].depth > tree[start].depth; i++) {
+    const node: Branch = { item: tree[i], children: [] };
+    while (stack.length && stack[stack.length - 1].item.depth >= node.item.depth) stack.pop();
+    (stack.length ? stack[stack.length - 1].children : roots).push(node);
+    stack.push(node);
+  }
+  return roots;
+}
 
-      {ancestors.map((a, i) => (
-        <li key={a.id} className="thread-row" style={indent(i)}>
-          <span className="thread-indent" aria-hidden="true" />
-          <span className="thread-node" aria-hidden="true">
-            <span className="thread-dot" />
-          </span>
-          <Link to={`/notes/${a.id}`} state={{ back }} className="thread-card" title={a.title}>
-            <span className="thread-card-title">{a.title}</span>
-          </Link>
-        </li>
-      ))}
+// 笔记链：祖先 → 当前 → 子树，层级靠缩进与折线表达，当前笔记是展开的正文卡
+export default function NoteThread({ ancestors, currentId, tree, back, cap, children }: Props) {
+  const times = new Map(tree.map((n) => [n.id, n.updated_at]));
+  const branches = subtree(tree, currentId);
 
-      <li className="thread-row is-current" style={indent(currentDepth)}>
-        <span className="thread-indent" aria-hidden="true" />
-        <span className="thread-node" aria-hidden="true">
-          <span className="thread-dot" />
-        </span>
-        <div className="thread-current">{children}</div>
-      </li>
-
-      {descendants.map((d) => (
-        <li key={d.id} className="thread-row" style={indent(d.depth)}>
-          <span className="thread-indent" aria-hidden="true" />
-          <span className="thread-node" aria-hidden="true">
-            <span className="thread-dot" />
-          </span>
-          <Link to={`/notes/${d.id}`} state={{ back }} className="thread-card" title={d.title}>
-            {d.depth > cap && <span className="thread-depth">第 {d.depth + 1} 层</span>}
-            <span className="thread-card-title">{d.title}</span>
-            <time dateTime={d.updated_at} title={`最近更新 ${fullTime(d.updated_at)}`}>
-              {formatTime(d.updated_at)}
-            </time>
-          </Link>
-        </li>
-      ))}
-
-      {addChild && (
-        <li className="thread-row" style={indent(currentDepth + 1)}>
-          <span className="thread-indent" aria-hidden="true" />
-          <span className="thread-node thread-node-add" aria-hidden="true">
-            <PlusIcon size={14} />
-          </span>
-          {addChild}
-        </li>
-      )}
-    </ul>
+  const level = (depth: number, items: ReactNode) => (
+    <ul className={`thread-children${depth > cap ? ' is-flat' : ''}`}>{items}</ul>
   );
+
+  const node = (id: number, title: string, depth: number) => {
+    const updated = times.get(id);
+    return (
+      <Link to={`/notes/${id}`} state={{ back }} className="thread-node" title={title}>
+        {depth > cap && <span className="thread-depth">第 {depth + 1} 层</span>}
+        <span className="thread-node-title">{title}</span>
+        {updated && (
+          <time dateTime={updated} title={`最近更新 ${fullTime(updated)}`}>
+            {formatTime(updated)}
+          </time>
+        )}
+      </Link>
+    );
+  };
+
+  const renderBranch = (b: Branch) => (
+    <li key={b.item.id}>
+      {node(b.item.id, b.item.title, b.item.depth)}
+      {b.children.length > 0 && level(b.item.depth + 1, b.children.map(renderBranch))}
+    </li>
+  );
+
+  const renderChain = (i: number): ReactNode => {
+    if (i < ancestors.length) {
+      const a = ancestors[i];
+      return (
+        <li key={a.id}>
+          {node(a.id, a.title, i)}
+          {level(i + 1, renderChain(i + 1))}
+        </li>
+      );
+    }
+    return (
+      <li key={currentId} className="is-current">
+        <div className="thread-current">{children}</div>
+        {branches.length > 0 && level(i + 1, branches.map(renderBranch))}
+      </li>
+    );
+  };
+
+  return <ul className="thread">{renderChain(0)}</ul>;
 }

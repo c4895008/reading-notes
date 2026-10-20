@@ -27,15 +27,6 @@ type Confirm = { kind: 'mount'; parent: NoteRef } | { kind: 'unmount' } | { kind
 
 const FRESH_MS = 1600;
 
-// listTree 是先序扁平序列：源笔记之后、深度不超过它的连续节点就是它的整棵子树
-function subtree(items: TreeItem[], id: number, depth: number) {
-  const start = items.findIndex((n) => n.id === id);
-  if (start < 0) return [];
-  const out: TreeItem[] = [];
-  for (let i = start + 1; i < items.length && items[i].depth > depth; i++) out.push(items[i]);
-  return out;
-}
-
 function useMedia(query: string) {
   const [match, setMatch] = useState(() => window.matchMedia(query).matches);
   useEffect(() => {
@@ -177,7 +168,7 @@ export default function NoteView() {
         expandNodes(userId, note.ancestors.map((a) => a.id));
         try {
           const items = await listTree(ctrl.signal);
-          if (!ctrl.signal.aborted) setThread(subtree(items, note.id, note.ancestors.length));
+          if (!ctrl.signal.aborted) setThread(items);
         } catch {
           if (!ctrl.signal.aborted) setThread([]);
         }
@@ -321,17 +312,7 @@ export default function NoteView() {
 
       {note && (
         <>
-          <NoteThread
-            ancestors={note.ancestors}
-            descendants={thread ?? []}
-            back={back}
-            cap={cap}
-            addChild={
-              <Link to={`/notes/new?under=${note.id}`} state={{ back }} className="thread-add">
-                在它之下补充一条更具体的笔记
-              </Link>
-            }
-          >
+          <NoteThread ancestors={note.ancestors} currentId={note.id} tree={thread ?? []} back={back} cap={cap}>
             <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
               <div className="reading-topmeta">
                 {note.discussion && (
