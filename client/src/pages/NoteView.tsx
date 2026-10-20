@@ -312,35 +312,42 @@ export default function NoteView() {
 
       {note && (
         <>
-          <NoteThread ancestors={note.ancestors} currentId={note.id} tree={thread ?? []} back={back} cap={cap}>
-            <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
-              <div className="reading-topmeta">
-                {note.discussion && (
-                  <span className={`pill${note.discussion.status === 'active' ? ' pill-accent' : ''}`}>
-                    {STATUS_LABEL[note.discussion.status]}
-                  </span>
-                )}
-                <TimeMeta note={note} />
-              </div>
-              <h1 className="reading-title">{note.title}</h1>
-              <TagEditor
-                noteId={note.id}
-                tags={note.tags}
-                onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
-              />
-              {note.quote && <QuoteBlock text={note.quote} />}
-              {note.content ? (
-                <NoteBody source={note.content} />
-              ) : (
-                <p className="reading-empty">
-                  还没有写下想法。
-                  <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }}>
-                    补上几句
-                  </Link>
-                </p>
+          {(note.ancestors.length > 0 || childCount > 0) && (
+            <NoteThread
+              ancestors={note.ancestors}
+              current={{ id: note.id, title: note.title }}
+              tree={thread ?? []}
+              back={back}
+              cap={cap}
+            />
+          )}
+          <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
+            <div className="reading-topmeta">
+              {note.discussion && (
+                <span className={`pill${note.discussion.status === 'active' ? ' pill-accent' : ''}`}>
+                  {STATUS_LABEL[note.discussion.status]}
+                </span>
               )}
-            </article>
-          </NoteThread>
+              <TimeMeta note={note} />
+            </div>
+            <h1 className="reading-title">{note.title}</h1>
+            <TagEditor
+              noteId={note.id}
+              tags={note.tags}
+              onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
+            />
+            {note.quote && <QuoteBlock text={note.quote} />}
+            {note.content ? (
+              <NoteBody source={note.content} />
+            ) : (
+              <p className="reading-empty">
+                还没有写下想法。
+                <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }}>
+                  补上几句
+                </Link>
+              </p>
+            )}
+          </article>
 
           <section className="grow" aria-label="让它生长">
             <button type="button" className="grow-card" onClick={startRefine}>

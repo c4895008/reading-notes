@@ -1,38 +1,59 @@
-/* 笔记链：每条笔记一张卡，子级缩进，折线从父卡底部接到子卡左侧 */
+/* 笔记链导图：一张大纲收起整条链，引导线从父级标题下方拐入子级 */
 .thread {
-  --step: 28px;
-  --elbow: 31px;
+  --step: 22px;
+  --elbow: 19px;
   --wire: 1.5px solid var(--line-strong);
-  margin: 16px 0 0;
+  margin-top: 16px;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.thread-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 10px 6px;
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-variant-numeric: tabular-nums;
+}
+
+.thread-label {
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.thread-tree,
+.thread-children {
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .thread-children {
-  margin: 0;
-  padding: 0 0 0 var(--step);
-  list-style: none;
+  padding-left: var(--step);
 }
 
 .thread-children > li {
   position: relative;
-  padding-top: 10px;
+  padding-top: 2px;
 }
 
-/* 折线：从父卡底部竖下，圆角拐进本卡 */
 .thread-children > li::before {
   position: absolute;
   top: 0;
   left: calc(var(--step) / -2);
-  width: calc(var(--step) / 2);
+  width: calc(var(--step) / 2 - 2px);
   height: var(--elbow);
   border-bottom: var(--wire);
   border-left: var(--wire);
-  border-bottom-left-radius: 8px;
+  border-bottom-left-radius: 6px;
   content: '';
 }
 
-/* 后面还有兄弟时，竖线继续往下接 */
 .thread-children > li:not(:last-child)::after {
   position: absolute;
   top: 0;
@@ -40,11 +61,6 @@
   left: calc(var(--step) / -2);
   border-left: var(--wire);
   content: '';
-}
-
-/* 拐点对齐正文卡的元信息行 */
-.thread-children > li.is-current {
-  --elbow: 53px;
 }
 
 .thread-children.is-flat {
@@ -56,73 +72,69 @@
   display: none;
 }
 
-.thread-node {
+.thread-row {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 10px;
-  padding: 9px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
   color: var(--ink-soft);
-  transition: border-color 160ms var(--ease), color 160ms var(--ease);
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
 }
 
-.thread-node:hover {
-  border-color: var(--line-strong);
+a.thread-row:hover {
+  background: var(--paper);
   color: var(--ink);
 }
 
-.thread-node-title {
+.thread-row.is-current {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.thread-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-size: var(--text-ui);
-  line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.thread-node time {
+.thread-row time,
+.thread-here {
   flex: none;
   color: var(--faint);
   font-size: var(--text-aux);
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
+}
+
+.thread-here {
+  color: var(--accent);
 }
 
 .thread-depth {
   flex: none;
-  padding: 1px 8px;
+  padding: 0 7px;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   color: var(--muted);
   font-size: var(--text-aux);
+  font-weight: 400;
   white-space: nowrap;
-}
-
-.thread-current .reading-card {
-  margin: 0;
-}
-
-/* 处在链条中时才强调当前卡，孤立笔记保持原样 */
-.thread-children > li.is-current > .thread-current .reading-card,
-.thread > li.is-current:has(> .thread-children) > .thread-current .reading-card {
-  border-color: var(--accent);
-}
-
-@media (max-width: 768px) {
-  .thread-children > li.is-current {
-    --elbow: 43px;
-  }
 }
 
 @media (max-width: 600px) {
   .thread {
-    --step: 18px;
+    --step: 16px;
+    padding: 10px 8px 8px;
   }
 
-  .thread-children > li::before {
-    border-bottom-left-radius: 6px;
+  .thread-row {
+    padding: 6px 8px;
   }
 }
