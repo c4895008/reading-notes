@@ -1,17 +1,17 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { listNotes, listTree, type NoteRef, type NoteSummary, type TreeItem } from '../api/notes';
 import { listTags, type Tag } from '../api/tags';
 import { useAuth } from '../auth/AuthContext';
-import { ChevronIcon, PlusIcon, SearchIcon, XIcon } from '../components/Icons';
+import { PlusIcon, SearchIcon, XIcon } from '../components/Icons';
+import NoteTreeView, { TREE_COLLAPSE_OVER } from '../components/NoteTree';
 import { formatTime, fullTime } from '../lib/time';
 import { loadCollapsed, loadLastViewed, loadView, saveCollapsed, saveView, type NotesView } from '../lib/treeState';
 import './Page.css';
 import './Notes.css';
 
 const DEBOUNCE_MS = 250;
-const DEFAULT_COLLAPSE_OVER = 500;
 
 type ListState =
   | { status: 'loading' }
@@ -210,17 +210,6 @@ function ListResults({ q, tag, back, onEmpty }: { q: string; tag: number | null;
   );
 }
 
-function visibleRows(items: TreeItem[], collapsed: Set<number>) {
-  const rows: TreeItem[] = [];
-  let hideBelow = Infinity;
-  for (const item of items) {
-    if (item.depth > hideBelow) continue;
-    hideBelow = collapsed.has(item.id) && item.child_count > 0 ? item.depth : Infinity;
-    rows.push(item);
-  }
-  return rows;
-}
-
 function NoteTree({ userId, onEmpty }: { userId: number; onEmpty: (empty: boolean) => void }) {
   const [state, setState] = useState<TreeState>({ status: 'loading' });
   const [reload, setReload] = useState(0);
@@ -228,8 +217,6 @@ function NoteTree({ userId, onEmpty }: { userId: number; onEmpty: (empty: boolea
   const narrow = useMedia('(max-width: 600px)');
   const cap = narrow ? 3 : 6;
   const current = useMemo(() => loadLastViewed(), []);
-  const currentRef = useRef<HTMLLIElement>(null);
-  const scrolled = useRef(false);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -242,7 +229,7 @@ function NoteTree({ userId, onEmpty }: { userId: number; onEmpty: (empty: boolea
           if (c) return c;
           // 从未记录过折叠态：默认全展开，节点过多时折叠顶层
           const initial = new Set(
-            items.length > DEFAULT_COLLAPSE_OVER ? items.filter((n) => n.depth === 0 && n.child_count > 0).map((n) => n.id) : [],
+            items.length > TREE_COLLAPSE_OVER ? items.filter((n) => n.depth === 0 && n.child_count > 0).map((n) => n.id) : [],
           );
           saveCollapsed(userId, initial);
           return initial;
@@ -253,18 +240,6 @@ function NoteTree({ userId, onEmpty }: { userId: number; onEmpty: (empty: boolea
       });
     return () => ctrl.abort();
   }, [reload, userId, onEmpty]);
-
-  const rows = useMemo(
-    () => (state.status === 'ready' && collapsed ? visibleRows(state.items, collapsed) : []),
-    [state, collapsed],
-  );
-
-  useLayoutEffect(() => {
-    if (scrolled.current || !currentRef.current) return;
-    scrolled.current = true;
-    const rect = currentRef.current.getBoundingClientRect();
-    if (rect.top < 80 || rect.bottom > window.innerHeight - 80) currentRef.current.scrollIntoView({ block: 'center' });
-  }, [rows]);
 
   function toggle(id: number) {
     setCollapsed((c) => {
@@ -280,52 +255,7 @@ function NoteTree({ userId, onEmpty }: { userId: number; onEmpty: (empty: boolea
   if (state.status === 'loading' || !collapsed) return <SkeletonTree />;
   if (state.items.length === 0) return <EmptyNotes />;
 
-  const flat = state.items.every((n) => n.child_count === 0);
-
-  return (
-    <>
-      {flat && <p className="tree-hint">写下几条笔记后，用「向上提炼」让它们长出层次。</p>}
-      <ul className="tree" aria-label="笔记结构">
-        {rows.map((item) => {
-          const isOpen = !collapsed.has(item.id);
-          const isCurrent = item.id === current;
-          return (
-            <li
-              key={item.id}
-              ref={isCurrent ? currentRef : undefined}
-              className={`tree-row${item.depth === 0 ? ' is-root' : ''}${isCurrent ? ' is-current' : ''}`}
-              style={{ '--depth': Math.min(item.depth, cap) } as CSSProperties}
-            >
-              <span className="tree-indent" aria-hidden="true" />
-              {item.child_count > 0 ? (
-                <button
-                  type="button"
-                  className="tree-toggle"
-                  aria-expanded={isOpen}
-                  aria-label={`${isOpen ? '折叠' : '展开'}「${item.title}」`}
-                  onClick={() => toggle(item.id)}
-                >
-                  <ChevronIcon />
-                </button>
-              ) : (
-                <span className="tree-toggle is-leaf" aria-hidden="true" />
-              )}
-              <Link
-                to={`/notes/${item.id}`}
-                state={{ back: '/notes' }}
-                className="tree-link"
-                aria-current={isCurrent ? 'true' : undefined}
-              >
-                {item.depth > cap && <span className="tree-depth">第 {item.depth + 1} 层</span>}
-                <span className="tree-title">{item.title}</span>
-                {!isOpen && <span className="tree-count">{item.child_count}</span>}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </>
-  );
+  return <NoteTreeView items={state.items} collapsed={collapsed} onToggle={toggle} currentId={current} back="/notes" cap={cap} />;
 }
 
 export default function NotesList() {

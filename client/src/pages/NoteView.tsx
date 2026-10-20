@@ -9,7 +9,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useExplorerContent } from '../components/Explorer';
 import { BackIcon, MountIcon, PenIcon, PlusIcon, RefineIcon, SupplementIcon, TalkIcon, TrashIcon, UnmountIcon } from '../components/Icons';
 import { NoteBody, QuoteBlock } from '../components/NoteContent';
-import NotesExplorer from '../components/NotesExplorer';
+import NotesExplorer, { TREE_CHANGED_EVENT } from '../components/NotesExplorer';
 import InviteDialog, { type InviteTarget } from '../components/InviteDialog';
 import NotePicker from '../components/NotePicker';
 import TagEditor from '../components/TagEditor';
@@ -264,6 +264,7 @@ export default function NoteView() {
       const parentId = confirm.kind === 'mount' ? confirm.parent.id : null;
       await moveNote(note.id, parentId);
       if (parentId) expandNodes(userId, [parentId]);
+      window.dispatchEvent(new Event(TREE_CHANGED_EVENT));
       toast(parentId ? '已调整结构' : '已成为顶层笔记');
       setBusy(false);
       setConfirm(null);
