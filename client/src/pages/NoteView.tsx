@@ -2,14 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { STATUS_LABEL, type InviteResult, type TalkSummary } from '../api/discussions';
-import { deleteNote, getNote, moveNote, type Note, type NoteRef } from '../api/notes';
+import { deleteNote, getNote, listTree, moveNote, type Note, type NoteRef, type TreeItem } from '../api/notes';
 import { useAuth } from '../auth/AuthContext';
 import AvatarGroup from '../components/AvatarGroup';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useExplorerContent } from '../components/Explorer';
-import { BackIcon, MountIcon, PenIcon, PlusIcon, RefineIcon, SupplementIcon, TalkIcon, TrashIcon, UnmountIcon } from '../components/Icons';
+import { BackIcon, MountIcon, PenIcon, RefineIcon, SupplementIcon, TalkIcon, TrashIcon, UnmountIcon } from '../components/Icons';
 import { NoteBody, QuoteBlock } from '../components/NoteContent';
-import NotesExplorer, { TREE_CHANGED_EVENT } from '../components/NotesExplorer';
+import NotesExplorer from '../components/NotesExplorer';
+import NoteThread from '../components/NoteThread';
 import InviteDialog, { type InviteTarget } from '../components/InviteDialog';
 import NotePicker from '../components/NotePicker';
 import TagEditor from '../components/TagEditor';
@@ -25,8 +26,26 @@ type NavState = { back?: string; fresh?: boolean; compose?: 'refine' } | null;
 type Confirm = { kind: 'mount'; parent: NoteRef } | { kind: 'unmount' } | { kind: 'delete' } | null;
 
 const FRESH_MS = 1600;
-const CRUMB_HEAD = 1;
-const CRUMB_TAIL = 2;
+
+// listTree 是先序扁平序列：源笔记之后、深度不超过它的连续节点就是它的整棵子树
+function subtree(items: TreeItem[], id: number, depth: number) {
+  const start = items.findIndex((n) => n.id === id);
+  if (start < 0) return [];
+  const out: TreeItem[] = [];
+  for (let i = start + 1; i < items.length && items[i].depth > depth; i++) out.push(items[i]);
+  return out;
+}
+
+function useMedia(query: string) {
+  const [match, setMatch] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatch(mql.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [query]);
+  return match;
+}
 
 export function NoteMissing() {
   return (
@@ -71,43 +90,6 @@ function TimeMeta({ note }: { note: Note }) {
         </>
       )}
     </p>
-  );
-}
-
-function Breadcrumb({ ancestors, back }: { ancestors: NoteRef[]; back: string }) {
-  const [full, setFull] = useState(false);
-  useEffect(() => setFull(false), [ancestors]);
-
-  if (ancestors.length === 0) {
-    return (
-      <nav className="crumbs" aria-label="层级路径">
-        <span className="crumb is-root">顶层笔记</span>
-      </nav>
-    );
-  }
-
-  const folded = !full && ancestors.length > CRUMB_HEAD + CRUMB_TAIL;
-  const shown = folded ? [...ancestors.slice(0, CRUMB_HEAD), null, ...ancestors.slice(-CRUMB_TAIL)] : ancestors;
-  return (
-    <nav className="crumbs" aria-label="层级路径">
-      <ol>
-        {shown.map((a, i) =>
-          a ? (
-            <li key={a.id}>
-              <Link to={`/notes/${a.id}`} state={{ back }} className="crumb" title={a.title}>
-                {a.title}
-              </Link>
-            </li>
-          ) : (
-            <li key={`more-${i}`}>
-              <button type="button" className="crumb crumb-more" aria-label="展开完整路径" onClick={() => setFull(true)}>
-                …
-              </button>
-            </li>
-          ),
-        )}
-      </ol>
-    </nav>
   );
 }
 
@@ -174,8 +156,11 @@ export default function NoteView() {
   useExplorerContent(`notes:${id}`, <NotesExplorer currentId={/^\d+$/.test(id) ? Number(id) : null} />);
 
   const [state, setState] = useState<State>({ status: 'loading' });
+  const [thread, setThread] = useState<TreeItem[] | null>(null);
   const [reload, setReload] = useState(0);
   const [fresh, setFresh] = useState(false);
+  const narrow = useMedia('(max-width: 600px)');
+  const cap = narrow ? 2 : 4;
   const [picking, setPicking] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
@@ -183,12 +168,19 @@ export default function NoteView() {
 
   useEffect(() => {
     const ctrl = new AbortController();
+    setThread(null);
     setState((s) => (s.status === 'ready' && String(s.note.id) === id ? s : { status: 'loading' }));
     getNote(id, ctrl.signal)
-      .then((note) => {
+      .then(async (note) => {
         setState({ status: 'ready', note });
         saveLastViewed(note.id);
         expandNodes(userId, note.ancestors.map((a) => a.id));
+        try {
+          const items = await listTree(ctrl.signal);
+          if (!ctrl.signal.aborted) setThread(subtree(items, note.id, note.ancestors.length));
+        } catch {
+          if (!ctrl.signal.aborted) setThread([]);
+        }
       })
       .catch((e: ApiError) => {
         if (ctrl.signal.aborted) return;
@@ -264,7 +256,6 @@ export default function NoteView() {
       const parentId = confirm.kind === 'mount' ? confirm.parent.id : null;
       await moveNote(note.id, parentId);
       if (parentId) expandNodes(userId, [parentId]);
-      window.dispatchEvent(new Event(TREE_CHANGED_EVENT));
       toast(parentId ? '已调整结构' : '已成为顶层笔记');
       setBusy(false);
       setConfirm(null);
@@ -330,59 +321,45 @@ export default function NoteView() {
 
       {note && (
         <>
-          <Breadcrumb ancestors={note.ancestors} back={back} />
-
-          <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
-            <div className="reading-topmeta">
-              {note.discussion && (
-                <span className={`pill${note.discussion.status === 'active' ? ' pill-accent' : ''}`}>
-                  {STATUS_LABEL[note.discussion.status]}
-                </span>
+          <NoteThread
+            ancestors={note.ancestors}
+            descendants={thread ?? []}
+            back={back}
+            cap={cap}
+            addChild={
+              <Link to={`/notes/new?under=${note.id}`} state={{ back }} className="thread-add">
+                在它之下补充一条更具体的笔记
+              </Link>
+            }
+          >
+            <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
+              <div className="reading-topmeta">
+                {note.discussion && (
+                  <span className={`pill${note.discussion.status === 'active' ? ' pill-accent' : ''}`}>
+                    {STATUS_LABEL[note.discussion.status]}
+                  </span>
+                )}
+                <TimeMeta note={note} />
+              </div>
+              <h1 className="reading-title">{note.title}</h1>
+              <TagEditor
+                noteId={note.id}
+                tags={note.tags}
+                onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
+              />
+              {note.quote && <QuoteBlock text={note.quote} />}
+              {note.content ? (
+                <NoteBody source={note.content} />
+              ) : (
+                <p className="reading-empty">
+                  还没有写下想法。
+                  <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }}>
+                    补上几句
+                  </Link>
+                </p>
               )}
-              <TimeMeta note={note} />
-            </div>
-            <h1 className="reading-title">{note.title}</h1>
-            <TagEditor
-              noteId={note.id}
-              tags={note.tags}
-              onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
-            />
-            {note.quote && <QuoteBlock text={note.quote} />}
-            {note.content ? (
-              <NoteBody source={note.content} />
-            ) : (
-              <p className="reading-empty">
-                还没有写下想法。
-                <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }}>
-                  补上几句
-                </Link>
-              </p>
-            )}
-          </article>
-
-          <section className="reading-section" aria-labelledby="children-title">
-            <h2 id="children-title" className="reading-section-title">
-              下层笔记{childCount > 0 && <span className="reading-section-count">{childCount}</span>}
-            </h2>
-            {childCount > 0 && (
-              <ul className="child-cards">
-                {note.children.map((c) => (
-                  <li key={c.id}>
-                    <Link to={`/notes/${c.id}`} state={{ back }} className="child-card">
-                      <span className="child-card-title">{c.title}</span>
-                      <time dateTime={c.updated_at} title={`最近更新 ${fullTime(c.updated_at)}`}>
-                        {formatTime(c.updated_at)}
-                      </time>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <Link to={`/notes/new?under=${note.id}`} state={{ back }} className="child-add">
-              <PlusIcon size={16} />
-              在它之下补充一条更具体的笔记
-            </Link>
-          </section>
+            </article>
+          </NoteThread>
 
           <section className="grow" aria-label="让它生长">
             <button type="button" className="grow-card" onClick={startRefine}>

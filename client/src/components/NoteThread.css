@@ -1,0 +1,149 @@
+/* 贯穿式笔记链：祖先 → 当前 → 后代，一条圆点线串起来 */
+.thread {
+  --step: 26px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread-root {
+  margin: 0 0 4px calc(var(--step) / 2 + 10px);
+  color: var(--faint);
+  font-size: var(--text-aux);
+}
+
+.thread-row {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.thread-indent {
+  flex: none;
+  width: calc(var(--depth) * var(--step));
+}
+
+.thread-node {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--step);
+}
+
+/* 竖线：穿过每个圆点 */
+.thread-node::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(30, 30, 28, 0.12);
+  content: '';
+}
+
+.thread-dot {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.thread-row.is-current .thread-dot {
+  width: 11px;
+  height: 11px;
+  background: var(--accent);
+}
+
+/* 当前行的线上下都出头，读起来更像时间轴 */
+.thread-row.is-current .thread-node::before {
+  background: var(--accent-faint);
+}
+
+.thread-card {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+}
+
+.thread-card:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.thread-card-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-card time {
+  flex: none;
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-variant-numeric: tabular-nums;
+}
+
+.thread-depth {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: var(--text-aux);
+  white-space: nowrap;
+}
+
+/* 当前笔记的正文卡片挂在这条行里，与上下圆点对齐 */
+.thread-current {
+  flex: 1;
+  min-width: 0;
+  margin: 6px 0;
+}
+
+.thread-current .reading-card {
+  margin: 0;
+}
+
+/* 后代区底部的补充入口，与链条对齐 */
+.thread-add {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 6px 0 0;
+  padding: 8px 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: var(--text-ui-sm);
+  transition: color 160ms var(--ease), border-color 160ms var(--ease);
+}
+
+.thread-add:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+@media (max-width: 600px) {
+  .thread {
+    --step: 20px;
+  }
+}

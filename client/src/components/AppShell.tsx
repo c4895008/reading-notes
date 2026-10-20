@@ -147,7 +147,7 @@ export default function AppShell() {
               >
                 <PanelLeftIcon size={18} />
               </button>
-              <div className="explorer-body" key={explorer.key}>{explorer.node}</div>
+              <div className="explorer-body">{explorer.node}</div>
             </aside>
           )}
 

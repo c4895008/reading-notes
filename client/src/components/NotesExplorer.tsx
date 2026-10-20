@@ -1,46 +1,23 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { listTree, type TreeItem } from '../api/notes';
-import { useAuth } from '../auth/AuthContext';
-import { PlusIcon } from './Icons';
-import NoteTreeView, { TREE_COLLAPSE_OVER } from './NoteTree';
+import { listNotes, type NoteSummary } from '../api/notes';
+import { formatTime, fullTime } from '../lib/time';
+import { ChevronIcon, PlusIcon } from './Icons';
 import TagSection from './TagSection';
-import { loadCollapsed, saveCollapsed } from '../lib/treeState';
 import './NotesExplorer.css';
-
-export const TREE_CHANGED_EVENT = 'rn:notes-tree-changed';
 
 type State =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; items: TreeItem[] };
-
-// 浏览面板窄，层级缩进最多展示 2 层，更深的显示「第 N 层」标记
-const CAP = 2;
-
-function ancestorIds(items: TreeItem[], id: number | null) {
-  if (id === null) return [];
-  const idx = items.findIndex((n) => n.id === id);
-  if (idx < 0) return [];
-  const ids: number[] = [];
-  let depth = items[idx].depth;
-  for (let i = idx - 1; i >= 0 && depth > 0; i -= 1) {
-    if (items[i].depth < depth) {
-      ids.push(items[i].id);
-      depth = items[i].depth;
-    }
-  }
-  return ids;
-}
+  | { status: 'ready'; items: NoteSummary[]; hasMore: boolean };
 
 function Skeleton() {
   return (
-    <ul className="tree" aria-hidden="true">
-      {[0, 1, 2, 1, 0].map((d, i) => (
-        <li key={i} className="tree-row is-skeleton" style={{ '--depth': d } as CSSProperties}>
-          <span className="tree-indent" />
-          <span className="sk sk-line" style={{ width: `${70 - d * 12}%` }} />
+    <ul className="exh-list" aria-hidden="true">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <li key={i} className="exh-row is-skeleton">
+          <span className="sk sk-line" />
         </li>
       ))}
     </ul>
@@ -48,64 +25,30 @@ function Skeleton() {
 }
 
 export default function NotesExplorer({ currentId = null }: { currentId?: number | null }) {
-  const { user } = useAuth();
-  const userId = user!.user_id;
   const [state, setState] = useState<State>({ status: 'loading' });
   const [reload, setReload] = useState(0);
-  const [collapsed, setCollapsed] = useState<Set<number> | null>(() => loadCollapsed(userId));
+  const currentRef = useRef<HTMLAnchorElement>(null);
+  const scrolled = useRef(false);
 
-  const load = useCallback(() => {
+  useEffect(() => {
     const ctrl = new AbortController();
     setState((s) => (s.status === 'error' ? { status: 'loading' } : s));
-    listTree(ctrl.signal)
-      .then((items) => {
-        setState({ status: 'ready', items });
-        setCollapsed((c) => {
-          let next = c;
-          if (!next) {
-            // 从未记录过折叠态：默认全展开，节点过多时折叠顶层
-            next = new Set(
-              items.length > TREE_COLLAPSE_OVER ? items.filter((n) => n.depth === 0 && n.child_count > 0).map((n) => n.id) : [],
-            );
-          }
-          // 保证当前笔记可见：展开它的全部祖先
-          const ancestors = ancestorIds(items, currentId);
-          if (ancestors.some((id) => next!.has(id))) {
-            next = new Set(next);
-            ancestors.forEach((id) => next!.delete(id));
-          }
-          saveCollapsed(userId, next);
-          return next;
-        });
-      })
+    listNotes({}, ctrl.signal)
+      .then((data) => setState({ status: 'ready', items: data.items, hasMore: data.has_more }))
       .catch((e: ApiError) => {
         if (!ctrl.signal.aborted) setState({ status: 'error', message: e.message });
       });
-    return ctrl;
-  }, [userId, currentId]);
+    return () => ctrl.abort();
+  }, [reload]);
 
   useEffect(() => {
-    const ctrl = load();
-    const onChanged = () => {
-      ctrl.abort();
-      load();
-    };
-    window.addEventListener(TREE_CHANGED_EVENT, onChanged);
-    return () => {
-      window.removeEventListener(TREE_CHANGED_EVENT, onChanged);
-      ctrl.abort();
-    };
-  }, [load, reload, currentId]);
-
-  function toggle(id: number) {
-    setCollapsed((c) => {
-      const next = new Set(c);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      saveCollapsed(userId, next);
-      return next;
-    });
-  }
+    if (scrolled.current || !currentRef.current) return;
+    scrolled.current = true;
+    const rect = currentRef.current.getBoundingClientRect();
+    if (rect.top < 72 || rect.bottom > window.innerHeight - 72) {
+      currentRef.current.scrollIntoView({ block: 'center' });
+    }
+  }, [state]);
 
   return (
     <div className="exh">
@@ -136,8 +79,32 @@ export default function NotesExplorer({ currentId = null }: { currentId?: number
         </div>
       )}
 
-      {state.status === 'ready' && state.items.length > 0 && collapsed && (
-        <NoteTreeView items={state.items} collapsed={collapsed} onToggle={toggle} currentId={currentId} back="/notes" cap={CAP} />
+      {state.status === 'ready' && state.items.length > 0 && (
+        <ul className="exh-list">
+          {state.items.map((note) => (
+            <li key={note.id}>
+              <Link
+                to={`/notes/${note.id}`}
+                state={{ back: '/notes' }}
+                ref={note.id === currentId ? currentRef : undefined}
+                aria-current={note.id === currentId ? 'page' : undefined}
+                className={`exh-row${note.id === currentId ? ' is-current' : ''}`}
+              >
+                <span className="exh-row-title">{note.title}</span>
+                <time dateTime={note.updated_at} title={`最近更新 ${fullTime(note.updated_at)}`}>
+                  {formatTime(note.updated_at)}
+                </time>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {state.status === 'ready' && state.hasMore && (
+        <Link to="/notes" className="exh-more">
+          全部笔记
+          <ChevronIcon size={14} />
+        </Link>
       )}
 
       <TagSection />
