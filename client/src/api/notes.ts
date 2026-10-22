@@ -15,7 +15,10 @@ export type NoteSummary = {
   excerpt_source: 'content' | 'quote' | 'none';
   depth: number;
   path?: NoteRef[];
+  child_count: number;
+  content_length: number;
   discussion_status: TalkStatus | null;
+  message_count: number;
   tags: NoteTag[];
   created_at: string;
   updated_at: string;

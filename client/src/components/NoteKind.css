@@ -1,19 +1,19 @@
 .kind-viewpoint {
-  --kind-dot: var(--accent);
-  --kind-bg: var(--accent-soft);
-  --kind-ink: var(--accent-deep);
+  --kind-dot: #4e81ee;
+  --kind-bg: #f0f6fe;
+  --kind-ink: #285ab0;
 }
 
 .kind-question {
-  --kind-dot: #f08c00;
-  --kind-bg: #fff3e0;
-  --kind-ink: #a85300;
+  --kind-dot: #e8a03d;
+  --kind-bg: #fefbec;
+  --kind-ink: #874623;
 }
 
 .kind-summary {
-  --kind-dot: #12a36d;
-  --kind-bg: var(--success-soft);
-  --kind-ink: var(--success-deep);
+  --kind-dot: #55b484;
+  --kind-bg: #f2fdf7;
+  --kind-ink: #37755a;
 }
 
 .kind-dot {
@@ -32,13 +32,13 @@
 }
 
 .kind-label {
-  padding: 2px 8px;
-  border-radius: var(--radius-xs);
+  padding: 0 6px;
+  border-radius: 4px;
   background: var(--kind-bg);
   color: var(--kind-ink);
-  font-size: var(--text-aux);
+  font-size: 12px;
   font-weight: 600;
-  line-height: 18px;
+  line-height: 16px;
 }
 
 .kind-picker {

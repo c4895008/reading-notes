@@ -103,6 +103,25 @@ export const ChevronIcon = ({ size = 16 }: IconProps) => (
   </svg>
 );
 
+export const TextIcon = ({ size = 14 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M4.5 7h15M4.5 12h15M4.5 17h9" />
+  </svg>
+);
+
+export const CommentIcon = ({ size = 14 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5H4.5z" />
+  </svg>
+);
+
+export const CheckCircleIcon = ({ size = 14 }: IconProps) => (
+  <svg {...base(size)}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="m8.5 12.2 2.4 2.4 4.6-4.8" />
+  </svg>
+);
+
 export const RefineIcon = ({ size = 22 }: IconProps) => (
   <svg {...base(size)}>
     <path d="M5 4.5h14M12 20V9M7.5 13.5 12 9l4.5 4.5" />

@@ -80,7 +80,9 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
       `SELECT n.id, n.parent_id, n.title, n.kind,
               LEFT(n.content_text, ${EXCERPT_LENGTH + 1}) AS content_head,
               LEFT(n.quote, ${EXCERPT_LENGTH * 4}) AS quote_head,
-              n.created_at, n.updated_at, d.status AS discussion_status
+              CHAR_LENGTH(REGEXP_REPLACE(n.content_text, '[[:space:]]+', '')) AS content_length,
+              n.created_at, n.updated_at, d.status AS discussion_status,
+              (SELECT COUNT(*) FROM message m WHERE m.discussion_id = d.id) AS message_count
          FROM note n
          LEFT JOIN discussion d ON d.note_id = n.id
         WHERE ${where.join(' AND ')}
@@ -103,7 +105,10 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
         ...excerptOf(row),
         depth: ancestors.length,
         ...(q ? { path: ancestors.map(brief) } : {}),
+        child_count: childrenOf(index, row.id).length,
+        content_length: Number(row.content_length ?? 0),
         discussion_status: STATUS_NAME[row.discussion_status] ?? null,
+        message_count: Number(row.message_count),
         tags: tagMap.get(row.id) ?? [],
         created_at: row.created_at,
         updated_at: row.updated_at,

@@ -4,9 +4,9 @@ import { ApiError } from '../api/client';
 import { listNotes, listTree, type NoteRef, type NoteSummary, type TreeItem } from '../api/notes';
 import { listTags, TAGS_CHANGED, type Tag } from '../api/tags';
 import { useAuth } from '../auth/AuthContext';
-import { formatTime, fullTime } from '../lib/time';
+import { fullTime, isoDate } from '../lib/time';
 import { loadCollapsed, loadLastViewed, saveCollapsed, type NotesView } from '../lib/treeState';
-import { BackIcon, ChevronIcon, ListIcon, PlusIcon, SearchIcon, TreeIcon } from './Icons';
+import { BackIcon, CheckCircleIcon, ChevronIcon, CommentIcon, ListIcon, PlusIcon, SearchIcon, TextIcon, TreeIcon } from './Icons';
 import { KindBadge } from './NoteKind';
 import NoteTreeView, { TREE_COLLAPSE_OVER } from './NoteTree';
 import './NotesBrowser.css';
@@ -38,6 +38,52 @@ function Excerpt({ note }: { note: NoteSummary }) {
 
 function NotePath({ path }: { path: NoteRef[] }) {
   return <p className="note-path">{path.length === 0 ? '顶层笔记' : path.map((p) => p.title).join(' / ')}</p>;
+}
+
+function NoteFoot({ note }: { note: NoteSummary }) {
+  const status = note.discussion_status;
+  return (
+    <span className="note-foot">
+      {note.child_count > 0 && (
+        <span className="note-foot-chip">
+          <TreeIcon size={14} />
+          {note.child_count} 条子笔记
+        </span>
+      )}
+      {note.content_length > 0 && (
+        <span className="note-foot-stat">
+          <TextIcon />
+          {note.content_length.toLocaleString('en-US')} 字
+        </span>
+      )}
+      {note.message_count > 0 && (
+        <span className="note-foot-stat">
+          <CommentIcon />
+          {note.message_count} 发言
+        </span>
+      )}
+      {note.tags.map((t) => (
+        <span key={t.id} className="note-foot-tag">
+          {t.name}
+        </span>
+      ))}
+      {status === 'active' ? (
+        <span className="note-foot-end is-active">
+          <span className="note-foot-dot" aria-hidden="true" />
+          讨论中
+        </span>
+      ) : status ? (
+        <span className="note-foot-end is-ended">
+          <CheckCircleIcon />
+          讨论已完结
+        </span>
+      ) : (
+        <span className="note-foot-end is-none" aria-hidden="true">
+          <ChevronIcon size={14} />
+        </span>
+      )}
+    </span>
+  );
 }
 
 function SkeletonList() {
@@ -246,7 +292,7 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
 
   const total = state.status === 'ready' ? state.total : null;
   const hasMore = state.status === 'ready' ? state.hasMore : false;
-  const pageSize = state.status === 'ready' ? state.pageSize : 20;
+  const pageSize = state.status === 'ready' ? state.pageSize : 10;
   const pages = total !== null ? Math.max(1, Math.ceil(total / pageSize)) : hasMore ? page + 1 : page;
   const headCount = view === 'tree' ? allCount : tagId === null && !q ? (total ?? allCount) : total;
 
@@ -412,23 +458,14 @@ function ListPane({
             <span className="note-title">{note.title}</span>
             <span className="note-meta">
               <KindBadge kind={note.kind} />
-              {note.discussion_status && (
-                <span className={`pill${note.discussion_status === 'active' ? ' pill-accent' : ''}`}>
-                  {note.discussion_status === 'active' ? '讨论中' : '已完结'}
-                </span>
-              )}
-              {note.depth > 0 && <span className="pill">第 {note.depth + 1} 层</span>}
-              {note.tags.map((t) => (
-                <span key={t.id} className="pill">
-                  {t.name}
-                </span>
-              ))}
+              {note.depth > 0 && <span className="note-depth">第 {note.depth + 1} 层</span>}
               <time dateTime={note.updated_at} title={`最近更新 ${fullTime(note.updated_at)}`}>
-                {formatTime(note.updated_at)}
+                {isoDate(note.updated_at)}
               </time>
             </span>
             {note.path && <NotePath path={note.path} />}
             <Excerpt note={note} />
+            <NoteFoot note={note} />
           </Link>
         </li>
       ))}

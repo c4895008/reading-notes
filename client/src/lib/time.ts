@@ -20,9 +20,14 @@ export function formatDate(iso: string, now = new Date()): string {
   return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()} 年 ${md}`;
 }
 
+export function isoDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function fullTime(iso: string): string {
   const d = new Date(iso);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${isoDate(iso)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function clock(iso: string): string {

@@ -344,14 +344,14 @@
 
 @media (max-width: 1599px) {
   .shell {
-    --explorer-width: 370px;
+    --explorer-width: 410px;
   }
 }
 
 @media (max-width: 1399px) {
   .shell {
     --nav-width: 72px;
-    --explorer-width: 340px;
+    --explorer-width: 410px;
   }
 
   .sidebar-head {
