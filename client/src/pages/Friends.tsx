@@ -467,7 +467,7 @@ export default function Friends() {
         title="解除读友？"
         message={
           removing
-            ? `解除后，对方将不能再看到你发起的笔谈，你也将退出对方发起的笔谈。确定解除与「${removing.nickname}」的读友关系？`
+            ? `解除后，对方将不能再看到你发起的讨论，你也将退出对方发起的讨论。确定解除与「${removing.nickname}」的读友关系？`
             : undefined
         }
         confirmLabel="解除"

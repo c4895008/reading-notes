@@ -1,12 +1,13 @@
 .quote-block {
   margin: 0;
-  padding: 14px 20px;
-  border-left: 2px solid var(--accent);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  background: var(--accent-faint);
+  padding: 20px 24px;
+  border-left: 4px solid var(--success);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--success-soft);
   color: var(--ink-soft);
-  font-family: var(--font-display);
+  font-family: var(--font-reading);
   font-size: var(--text-body);
+  font-style: italic;
   line-height: var(--leading-body);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -14,7 +15,7 @@
 
 .md {
   color: var(--ink);
-  font-family: var(--font-display);
+  font-family: var(--font-reading);
   font-size: var(--text-body);
   line-height: var(--leading-body);
   overflow-wrap: anywhere;

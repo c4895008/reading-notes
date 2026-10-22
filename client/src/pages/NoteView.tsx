@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { STATUS_LABEL, type InviteResult, type TalkSummary } from '../api/discussions';
 import { deleteNote, getNote, listTree, moveNote, type Note, type NoteRef, type TreeItem } from '../api/notes';
+import { TAGS_CHANGED, type NoteTag } from '../api/tags';
 import { useAuth } from '../auth/AuthContext';
 import AvatarGroup from '../components/AvatarGroup';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -88,7 +89,7 @@ function TalkSection({ talk, here, onStart, onInvite }: { talk: TalkSummary | nu
   return (
     <section className="reading-section" aria-labelledby="talk-title">
       <h2 id="talk-title" className="reading-section-title">
-        这条笔记的笔谈
+        这条笔记的讨论
       </h2>
       {talk ? (
         <div className="note-talk">
@@ -97,7 +98,7 @@ function TalkSection({ talk, here, onStart, onInvite }: { talk: TalkSummary | nu
             <span className="note-talk-main">
               <span className="note-talk-open">
                 <TalkIcon size={18} />
-                打开笔谈
+                打开讨论
               </span>
               <span className="note-talk-meta">
                 {talk.participants.length} 位参与者 ·{' '}
@@ -118,7 +119,7 @@ function TalkSection({ talk, here, onStart, onInvite }: { talk: TalkSummary | nu
           <p>还没有就这条笔记聊过。邀请读友，把想法聊透。</p>
           <button type="button" className="btn btn-ghost" onClick={onStart}>
             <TalkIcon size={18} />
-            发起笔谈
+            发起讨论
           </button>
         </div>
       )}
@@ -156,14 +157,17 @@ export default function NoteView() {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const refreshedTags = useRef<NoteTag[] | null>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
+    refreshedTags.current = null;
     setThread(null);
     setState((s) => (s.status === 'ready' && String(s.note.id) === id ? s : { status: 'loading' }));
     getNote(id, ctrl.signal)
       .then(async (note) => {
-        setState({ status: 'ready', note });
+        if (ctrl.signal.aborted) return;
+        setState({ status: 'ready', note: { ...note, tags: refreshedTags.current ?? note.tags } });
         saveLastViewed(note.id);
         expandNodes(userId, note.ancestors.map((a) => a.id));
         try {
@@ -179,6 +183,32 @@ export default function NoteView() {
       });
     return () => ctrl.abort();
   }, [id, reload, userId]);
+
+  useEffect(() => {
+    let ctrl: AbortController | undefined;
+    const refresh = () => {
+      ctrl?.abort();
+      ctrl = new AbortController();
+      const { signal } = ctrl;
+      getNote(id, signal)
+        .then((note) => {
+          if (!signal.aborted) {
+            refreshedTags.current = note.tags;
+            setState((s) =>
+              s.status === 'ready' && s.note.id === note.id
+                ? { ...s, note: { ...s.note, tags: note.tags } }
+                : s,
+            );
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener(TAGS_CHANGED, refresh);
+    return () => {
+      ctrl?.abort();
+      window.removeEventListener(TAGS_CHANGED, refresh);
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!navState?.fresh) return;
@@ -214,7 +244,7 @@ export default function NoteView() {
   function talkDone(result: InviteResult) {
     const n = result.invited.length;
     setInviting(false);
-    toast(`已邀请 ${n} 位读友加入笔谈`);
+    toast(`已邀请 ${n} 位读友加入讨论`);
     badgeToast(result.new_badges);
     if (note?.discussion) setReload((r) => r + 1);
     else navigate(`/talks/${result.discussion_id}`, { state: { back: location.pathname } });
@@ -260,7 +290,7 @@ export default function NoteView() {
   const childCount = note?.children.length ?? 0;
   const deleteImpacts = [
     ...(childCount > 0 ? [`它的 ${childCount} 条子笔记将保留并成为顶层笔记。`] : []),
-    ...(note?.discussion ? ['这场笔谈会完整保留，读友仍可回看；进行中的笔谈可继续发言。'] : []),
+    ...(note?.discussion ? ['这场讨论会完整保留，读友仍可回看；进行中的讨论可继续发言。'] : []),
   ];
   const confirmProps =
     note && confirm?.kind === 'mount'
@@ -287,10 +317,18 @@ export default function NoteView() {
   return (
     <div className="page page-enter reading">
       <div className="reading-bar">
-        <Link to={back} className="back-link">
-          <BackIcon />
-          笔记
-        </Link>
+        <nav className="reading-location" aria-label="笔记路径">
+          <Link to={back} className="back-link">
+            <BackIcon />
+            笔记
+          </Link>
+          {note && (
+            <>
+              <span className="reading-location-divider" aria-hidden="true">/</span>
+              <span className="reading-location-current" aria-current="page" title={note.title}>{note.title}</span>
+            </>
+          )}
+        </nav>
         {note && (
           <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }} className="btn btn-ghost">
             <PenIcon />
@@ -312,78 +350,87 @@ export default function NoteView() {
 
       {note && (
         <>
-          {(note.ancestors.length > 0 || childCount > 0) && (
-            <NoteThread
-              ancestors={note.ancestors}
-              current={{ id: note.id, title: note.title }}
-              tree={thread ?? []}
-              back={back}
-              cap={cap}
-            />
-          )}
-          <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
-            <div className="reading-topmeta">
-              {note.discussion && (
-                <span className={`pill${note.discussion.status === 'active' ? ' pill-accent' : ''}`}>
-                  {STATUS_LABEL[note.discussion.status]}
-                </span>
+          <div className="reading-workspace">
+            <div className="reading-document">
+              {(note.ancestors.length > 0 || childCount > 0) && (
+                <NoteThread
+                  ancestors={note.ancestors}
+                  current={{ id: note.id, title: note.title }}
+                  tree={thread ?? []}
+                  back={back}
+                  cap={cap}
+                />
               )}
-              <TimeMeta note={note} />
+              <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
+                <div className="reading-topmeta">
+                  <span className="reading-depth">{note.ancestors.length === 0 ? '顶层笔记' : `第 ${note.ancestors.length + 1} 层笔记`}</span>
+                  <TimeMeta note={note} />
+                </div>
+                <h1 className="reading-title">{note.title}</h1>
+                <TagEditor
+                  noteId={note.id}
+                  tags={note.tags}
+                  onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
+                />
+                {note.quote && <QuoteBlock text={note.quote} />}
+                {note.content ? (
+                  <NoteBody source={note.content} />
+                ) : (
+                  <p className="reading-empty">
+                    还没有写下想法。
+                    <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }}>
+                      补上几句
+                    </Link>
+                  </p>
+                )}
+              </article>
             </div>
-            <h1 className="reading-title">{note.title}</h1>
-            <TagEditor
-              noteId={note.id}
-              tags={note.tags}
-              onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
-            />
-            {note.quote && <QuoteBlock text={note.quote} />}
-            {note.content ? (
-              <NoteBody source={note.content} />
-            ) : (
-              <p className="reading-empty">
-                还没有写下想法。
-                <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }}>
-                  补上几句
-                </Link>
-              </p>
-            )}
-          </article>
 
-          <section className="grow" aria-label="让它生长">
-            <button type="button" className="grow-card" onClick={startRefine}>
-              <RefineIcon />
-              <span className="grow-verb">向上提炼</span>
-              <span className="grow-desc">写一条更抽象的笔记，把它收在下面。</span>
-            </button>
-            <Link to={`/notes/new?under=${note.id}`} state={{ back }} className="grow-card">
-              <SupplementIcon />
-              <span className="grow-verb">向下补充</span>
-              <span className="grow-desc">在它之下补充一条更具体的笔记。</span>
-            </Link>
-          </section>
+            <aside className="reading-context" aria-label="笔记上下文">
+              <section className="context-card" aria-labelledby="grow-title">
+                <h2 id="grow-title" className="reading-section-title">继续生长</h2>
+                <p className="context-hint">{childCount > 0 ? `已有 ${childCount} 条下层笔记，继续连接新的想法。` : '连接更抽象的理解，或补充具体的线索。'}</p>
+                <div className="grow">
+                  <button type="button" className="grow-card" onClick={startRefine}>
+                    <RefineIcon />
+                    <span className="grow-verb">向上提炼</span>
+                    <span className="grow-desc">写下更抽象的理解</span>
+                  </button>
+                  <Link to={`/notes/new?under=${note.id}`} state={{ back }} className="grow-card">
+                    <SupplementIcon />
+                    <span className="grow-verb">向下补充</span>
+                    <span className="grow-desc">补充更具体的线索</span>
+                  </Link>
+                </div>
+                <div className="reading-actions">
+                  <button type="button" className="text-btn" onClick={() => setPicking(true)}>
+                    <MountIcon />
+                    {note.parent_id ? '更换父笔记' : '挂载父笔记'}
+                  </button>
+                  {note.parent_id && (
+                    <button type="button" className="text-btn" onClick={() => setConfirm({ kind: 'unmount' })}>
+                      <UnmountIcon />
+                      解除父级
+                    </button>
+                  )}
+                </div>
+              </section>
 
-          <TalkSection
-            talk={note.discussion ?? null}
-            here={location.pathname}
-            onStart={() => setInviting(true)}
-            onInvite={() => setInviting(true)}
-          />
+              <TalkSection
+                talk={note.discussion ?? null}
+                here={location.pathname}
+                onStart={() => setInviting(true)}
+                onInvite={() => setInviting(true)}
+              />
 
-          <div className="reading-actions">
-            <button type="button" className="text-btn" onClick={() => setPicking(true)}>
-              <MountIcon />
-              {note.parent_id ? '更换父笔记' : '挂载父笔记'}
-            </button>
-            {note.parent_id && (
-              <button type="button" className="text-btn" onClick={() => setConfirm({ kind: 'unmount' })}>
-                <UnmountIcon />
-                解除父级
-              </button>
-            )}
-            <button type="button" className="text-btn is-danger" onClick={() => setConfirm({ kind: 'delete' })}>
-              <TrashIcon />
-              删除
-            </button>
+              <details className="reading-management">
+                <summary>笔记管理</summary>
+                <button type="button" className="text-btn is-danger" onClick={() => setConfirm({ kind: 'delete' })}>
+                  <TrashIcon />
+                  删除这条笔记
+                </button>
+              </details>
+            </aside>
           </div>
 
           <NotePicker

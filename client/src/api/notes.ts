@@ -45,7 +45,13 @@ export type TreeItem = {
 
 export type NoteInput = { title: string; quote: string | null; content: string };
 
-export type NotePage = { items: NoteSummary[]; page: number; page_size: number; has_more: boolean };
+export type NotePage = {
+  items: NoteSummary[];
+  page: number;
+  page_size: number;
+  total: number;
+  has_more: boolean;
+};
 
 export const NOTE_LIMITS = { title: 80, quote: 2000, content: 20000 } as const;
 

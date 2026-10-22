@@ -1,6 +1,5 @@
 export type NotesView = 'list' | 'tree';
 
-const viewKey = (userId: number) => `rn:notes:view:${userId}`;
 const collapsedKey = (userId: number) => `rn:tree:collapsed:${userId}`;
 const LAST_KEY = 'rn:tree:last';
 
@@ -19,9 +18,6 @@ function write(key: string, value: string, store: Storage = localStorage) {
     // 隐私模式或配额已满时只放弃记忆，不影响使用
   }
 }
-
-export const loadView = (userId: number): NotesView => (read(viewKey(userId)) === 'tree' ? 'tree' : 'list');
-export const saveView = (userId: number, view: NotesView) => write(viewKey(userId), view);
 
 // null 表示从未记录过，由调用方决定默认态
 export function loadCollapsed(userId: number): Set<number> | null {

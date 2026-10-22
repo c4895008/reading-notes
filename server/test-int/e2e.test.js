@@ -5,7 +5,7 @@ import { PASSWORD, api, nextIp, send, setup } from './helpers.js';
 await setup();
 
 // PRD 11.4 端到端主流程：全部走公开接口，按真实用户的操作顺序
-test('主流程：注册 → 引文笔记 → 提炼/补充/挂载 → 加读友 → 多人笔谈 → 徽章 → 追加邀请 → 完结/存档/取消存档/重开', async () => {
+test('主流程：注册 → 引文笔记 → 提炼/补充/挂载 → 加读友 → 多人讨论 → 徽章 → 追加邀请 → 完结/存档/取消存档/重开', async () => {
   const signup = async (username, nickname) => {
     const res = await api('POST', '/auth/register', { ip: nextIp(), body: { username, password: PASSWORD, nickname } });
     assert.equal(res.status, 201, res.text);
@@ -64,7 +64,7 @@ test('主流程：注册 → 引文笔记 → 提炼/补充/挂载 → 加读友
   }
   assert.equal((await api('GET', '/friends', { token: host.token })).body.data.items.length, 3);
 
-  // 就「补一句」发起笔谈，邀请林与墨；快照带上两层祖先
+  // 就「补一句」发起讨论，邀请林与墨；快照带上两层祖先
   const start = await api('POST', '/discussions', { token: host.token, body: { note_id: extra.id, invitee_ids: [lin.id, mo.id] } });
   assert.equal(start.status, 201);
   assert.deepEqual(start.body.data.new_badges.map((b) => b.code), ['kindler']);
@@ -104,7 +104,7 @@ test('主流程：注册 → 引文笔记 → 提炼/补充/挂载 → 加读友
     const res = await api('POST', `/discussions/${talk}/transition`, { token: host.token, body: { action } });
     assert.equal(res.body.data.status, status, action);
     const listed = (await api('GET', `/discussions?status=${status}`, { token: lin.token })).body.data.items;
-    assert.ok(listed.some((d) => d.id === talk), `${status} 分组应包含该笔谈`);
+    assert.ok(listed.some((d) => d.id === talk), `${status} 分组应包含该讨论`);
   };
   await step('end', 'ended');
   assert.equal((await send(lin, talk, '还能说吗')).status, 409);
@@ -113,7 +113,7 @@ test('主流程：注册 → 引文笔记 → 提炼/补充/挂载 → 加读友
   await step('reopen', 'active');
   assert.equal((await send(lin, talk, '又开了。')).status, 201);
 
-  // 删除父笔记：子笔记升为顶层，笔谈仍在
+  // 删除父笔记：子笔记升为顶层，讨论仍在
   const del = await api('DELETE', `/notes/${base.id}`, { token: host.token });
   assert.equal(del.body.data.promoted_children, 1);
   const after = (await api('GET', '/notes?view=tree', { token: host.token })).body.data.items;

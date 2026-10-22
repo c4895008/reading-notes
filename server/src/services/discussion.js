@@ -8,7 +8,7 @@ export const INVITE_LIMIT = 20;
 
 export const discussionNotFound = () => new AppError(404, 'DISCUSSION_NOT_FOUND', '无权访问或不存在');
 export const discussionExists = (discussionId) =>
-  new AppError(409, 'DISCUSSION_EXISTS', '这条笔记已经有一场笔谈了', { discussion_id: discussionId });
+  new AppError(409, 'DISCUSSION_EXISTS', '这条笔记已经有一场讨论了', { discussion_id: discussionId });
 
 // 参与资格（动态判定）：有参与者记录，且本人即发起人或与发起人互为读友
 export const isEligible = ({ hasRow, isInitiator, isFriend }) => Boolean(hasRow && (isInitiator || isFriend));
@@ -48,10 +48,10 @@ export const TRANSITION_ACTIONS = Object.keys(TRANSITIONS);
 
 // 身份先于状态：读友调用任何动作都是 403，不暴露当前状态是否允许
 export function planTransition(discussion, meId, action) {
-  if (discussion.initiator_id !== meId) throw new AppError(403, 'NOT_INITIATOR', '只有发起人可以变更笔谈状态');
+  if (discussion.initiator_id !== meId) throw new AppError(403, 'NOT_INITIATOR', '只有发起人可以变更讨论状态');
   const rule = TRANSITIONS[action];
   if (discussion.status !== rule.from) {
-    throw new AppError(409, 'INVALID_TRANSITION', '笔谈当前状态不支持这个操作', { status: STATUS_NAME[discussion.status] });
+    throw new AppError(409, 'INVALID_TRANSITION', '讨论当前状态不支持这个操作', { status: STATUS_NAME[discussion.status] });
   }
   return rule.to;
 }
@@ -79,7 +79,7 @@ export function parseMessageInput(body) {
 
 export function assertCanSend(discussion) {
   if (discussion.status !== DISCUSSION.ACTIVE) {
-    throw new AppError(409, 'DISCUSSION_NOT_ACTIVE', discussion.status === DISCUSSION.ARCHIVED ? '这场笔谈已存档' : '这场笔谈已完结，仅可回看');
+    throw new AppError(409, 'DISCUSSION_NOT_ACTIVE', discussion.status === DISCUSSION.ARCHIVED ? '这场讨论已存档' : '这场讨论已完结，仅可回看');
   }
 }
 
@@ -92,6 +92,6 @@ export function excerpt(content, max = 40) {
 export function assertCanInvite(discussion, meId) {
   if (discussion.initiator_id !== meId) throw new AppError(403, 'NOT_INITIATOR', '只有发起人可以邀请读友');
   if (discussion.status !== DISCUSSION.ACTIVE) {
-    throw new AppError(409, 'DISCUSSION_NOT_ACTIVE', '这场笔谈已完结，不能再邀请读友');
+    throw new AppError(409, 'DISCUSSION_NOT_ACTIVE', '这场讨论已完结，不能再邀请读友');
   }
 }

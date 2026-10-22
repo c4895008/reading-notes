@@ -1,4 +1,4 @@
-/* 笔谈列表 */
+/* 讨论列表 */
 .talk-tabs {
   margin-top: 24px;
 }
@@ -117,7 +117,8 @@ a.talk-row:hover {
 }
 
 /* 讨论页：左引文台 + 右讨论面板 */
-.talk-page {
+.page.talk-page {
+  width: 100%;
   max-width: none;
   padding: 0;
 }
@@ -756,5 +757,96 @@ a.talk-row:hover {
     align-items: center;
     align-self: center;
     padding-top: 0;
+  }
+}
+
+.talk-row {
+  padding: 18px 20px;
+  border-color: transparent;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+a.talk-row:hover {
+  border-color: rgba(0, 102, 204, 0.2);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.07);
+}
+
+.talk-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, var(--discussion-width));
+}
+
+.talk-note {
+  padding: 36px 32px 64px;
+}
+
+.chat-panel {
+  background: var(--surface);
+}
+
+.chat-head {
+  min-height: 56px;
+  padding: 14px 18px;
+}
+
+.desk {
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.msg-bubble {
+  border-color: transparent;
+  border-radius: 4px var(--radius) var(--radius) var(--radius);
+  background: var(--surface-2);
+}
+
+.msg.is-mine .msg-bubble {
+  border-radius: var(--radius) 4px var(--radius) var(--radius);
+  background: var(--accent-soft);
+}
+
+.composer {
+  border-color: transparent;
+  background: var(--surface-2);
+}
+
+.composer:focus-within {
+  background: var(--surface);
+}
+
+@media (max-width: 1199px) and (min-width: 900px) {
+  .talk-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .talk-note {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}
+
+@media (max-width: 899px) {
+  .talk-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .talk-note {
+    padding: 24px 18px 28px;
+  }
+
+  .chat-panel {
+    position: static;
+    height: auto;
+    margin: 0 12px 24px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+
+  .chat-scroll {
+    max-height: 62vh;
   }
 }

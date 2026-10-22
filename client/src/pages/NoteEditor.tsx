@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Textare
 import { useBlocker, useLocation, useNavigate, useParams, useSearchParams, type BlockerFunction } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { createNote, getNote, NOTE_LIMITS, promoteNote, updateNote, type NoteInput, type NoteRef } from '../api/notes';
-import type { NoteTag } from '../api/tags';
+import { TAGS_CHANGED, type NoteTag } from '../api/tags';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useExplorerContent } from '../components/Explorer';
 import { BackIcon } from '../components/Icons';
@@ -99,6 +99,7 @@ export default function NoteEditor({ refine, under = null }: Props) {
   const allowLeave = useRef(false);
   const idempotency = useRef<{ signature: string; key: string } | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const refreshedTags = useRef<NoteTag[] | null>(null);
 
   useEffect(() => {
     const loadId = mode === 'edit' ? id : mode === 'supplement' ? under : null;
@@ -108,14 +109,16 @@ export default function NoteEditor({ refine, under = null }: Props) {
       return;
     }
     const ctrl = new AbortController();
+    refreshedTags.current = null;
     setLoadState('loading');
     getNote(loadId, ctrl.signal)
       .then((note) => {
+        if (ctrl.signal.aborted) return;
         if (mode === 'edit') {
           const loaded = { title: note.title, quote: note.quote ?? '', content: note.content };
           setInitial(loaded);
           setDraft(loaded);
-          setEditTags(note.tags);
+          setEditTags(refreshedTags.current ?? note.tags);
         } else {
           setTarget({ id: note.id, title: note.title });
         }
@@ -128,6 +131,29 @@ export default function NoteEditor({ refine, under = null }: Props) {
       });
     return () => ctrl.abort();
   }, [mode, id, under, reload]);
+
+  useEffect(() => {
+    if (editId === null) return;
+    let ctrl: AbortController | undefined;
+    const refresh = () => {
+      ctrl?.abort();
+      ctrl = new AbortController();
+      const { signal } = ctrl;
+      getNote(editId, signal)
+        .then((note) => {
+          if (!signal.aborted) {
+            refreshedTags.current = note.tags;
+            setEditTags(note.tags);
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener(TAGS_CHANGED, refresh);
+    return () => {
+      ctrl?.abort();
+      window.removeEventListener(TAGS_CHANGED, refresh);
+    };
+  }, [editId]);
 
   useEffect(() => {
     if (!isEdit && loadState === 'ready') titleRef.current?.focus();

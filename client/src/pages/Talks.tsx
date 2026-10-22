@@ -71,11 +71,11 @@ function SkeletonRows() {
 }
 
 function Empty({ tab }: { tab: TalkStatus }) {
-  if (tab === 'archived') return <p className="notes-state">还没有存档的笔谈。</p>;
-  if (tab === 'ended') return <p className="notes-state">还没有已完结的笔谈。</p>;
+  if (tab === 'archived') return <p className="notes-state">还没有存档的讨论。</p>;
+  if (tab === 'ended') return <p className="notes-state">还没有已完结的讨论。</p>;
   return (
     <div className="notes-empty">
-      <p className="notes-empty-text">还没有笔谈。挑一条笔记，邀请读友聊聊。</p>
+      <p className="notes-empty-text">还没有讨论。挑一条笔记，邀请读友聊聊。</p>
       <Link to="/notes" className="btn btn-primary">
         去写一条笔记
       </Link>
@@ -173,11 +173,11 @@ export default function Talks() {
   return (
     <section className="page page-enter" aria-labelledby="talks-title">
       <h1 id="talks-title" className="page-title">
-        笔谈
+        讨论
       </h1>
-      <p className="page-hint">每场笔谈，都从一条具体的笔记开始。</p>
+      <p className="page-hint">每场讨论，都从一条具体的笔记开始。</p>
 
-      <div className="segmented talk-tabs" role="group" aria-label="笔谈状态">
+      <div className="segmented talk-tabs" role="group" aria-label="讨论状态">
         {TABS.map((t) => (
           <button
             key={t}

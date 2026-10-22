@@ -70,8 +70,8 @@ const OPS: Record<TalkStatus, Op[]> = {
   active: [
     {
       action: 'end',
-      label: '完结笔谈',
-      confirm: { title: '完结这场笔谈？', message: '完结后所有人都不能再发言，笔谈会完整保留。确定完结这场笔谈？' },
+      label: '完结讨论',
+      confirm: { title: '完结这场讨论？', message: '完结后所有人都不能再发言，讨论会完整保留。确定完结这场讨论？' },
     },
   ],
   ended: [
@@ -79,22 +79,22 @@ const OPS: Record<TalkStatus, Op[]> = {
     {
       action: 'archive',
       label: '存档',
-      confirm: { title: '存档这场笔谈？', message: '存档后它会从默认列表收起，可在「已存档」里找到，随时可以取消存档。' },
+      confirm: { title: '存档这场讨论？', message: '存档后它会从默认列表收起，可在「已存档」里找到，随时可以取消存档。' },
     },
   ],
   archived: [{ action: 'unarchive', label: '取消存档' }],
 };
 
 const OP_DONE: Record<TransitionAction, string> = {
-  end: '笔谈已完结',
-  reopen: '笔谈已重新开启',
-  archive: '笔谈已存档',
+  end: '讨论已完结',
+  reopen: '讨论已重新开启',
+  archive: '讨论已存档',
   unarchive: '已取消存档',
 };
 
 const READONLY_TEXT: Record<Exclude<TalkStatus, 'active'>, string> = {
-  ended: '这场笔谈已完结，仅可回看。',
-  archived: '这场笔谈已存档。',
+  ended: '这场讨论已完结，仅可回看。',
+  archived: '这场讨论已存档。',
 };
 
 function TalkMissing() {
@@ -104,7 +104,7 @@ function TalkMissing() {
         <p className="nf-mark">404</p>
         <h1 className="page-title">无权访问或不存在。</h1>
         <Link to="/talks" className="btn btn-primary">
-          回到笔谈列表
+          回到讨论列表
         </Link>
       </div>
     </div>
@@ -158,7 +158,7 @@ function CitationDesk({ talk }: { talk: TalkData }) {
       <div id="desk-body" className="desk-body" hidden={!open}>
         {snapshot.ancestors.length > 0 && (
           <div className="desk-ancestors">
-            <p className="desk-label">随这场笔谈共享的上层提炼</p>
+            <p className="desk-label">随这场讨论共享的上层提炼</p>
             {snapshot.ancestors.map((a, i) => (
               <details key={i} className="desk-ancestor">
                 <summary>
@@ -190,7 +190,7 @@ export default function Talk() {
   const { id = '' } = useParams();
   const location = useLocation();
   const back = (location.state as { back?: string } | null)?.back ?? '/talks';
-  const backLabel = back.startsWith('/notes') ? '笔记' : '笔谈';
+  const backLabel = back.startsWith('/notes') ? '笔记' : '讨论';
   const toast = useToast();
   const badgeToast = useBadgeToast();
   const talkIdNum = /^\d+$/.test(id) ? Number(id) : null;
@@ -291,7 +291,7 @@ export default function Talk() {
 
       const joined = page.participants.filter((p) => !knownPeople.current.has(p.user_id));
       knownPeople.current = new Set(page.participants.map((p) => p.user_id));
-      if (joined.length) toast(`${joined.length} 位读友加入了笔谈。`);
+      if (joined.length) toast(`${joined.length} 位读友加入了讨论。`);
 
       const fromOthers = page.messages.filter((m) => !m.is_mine);
       if (fromOthers.length) {
@@ -435,7 +435,7 @@ export default function Talk() {
 
   function invited(result: InviteResult) {
     setInviting(false);
-    toast(`已邀请 ${result.invited.length} 位读友加入笔谈`);
+    toast(`已邀请 ${result.invited.length} 位读友加入讨论`);
     setReload((r) => r + 1);
   }
 
@@ -517,10 +517,10 @@ export default function Talk() {
             <CitationDesk talk={talk} />
 
             {talk.note_has_newer_version && (
-              <p className="talk-hint is-weak">笔记已有新版本，本场笔谈基于 {formatDate(talk.snapshot.captured_at)} 的版本</p>
+              <p className="talk-hint is-weak">笔记已有新版本，本场讨论基于 {formatDate(talk.snapshot.captured_at)} 的版本</p>
             )}
 
-            {welcome && <p className="talk-hint">你被邀请参与这场笔谈。笔记与它的上层脉络就在一旁，大家聊到懂为止。</p>}
+            {welcome && <p className="talk-hint">你被邀请参与这场讨论。笔记与它的上层脉络就在一旁，大家聊到懂为止。</p>}
           </div>
 
           <aside className="chat-panel" aria-label="讨论">
@@ -535,7 +535,7 @@ export default function Talk() {
               <Thread
                 messages={messages}
                 pending={pending}
-                emptyText={talk.status === 'active' && !lost ? '笔谈已开始。从你此刻最真实的想法写起。' : '这场笔谈里还没有人发言。'}
+                emptyText={talk.status === 'active' && !lost ? '讨论已开始。从你此刻最真实的想法写起。' : '这场讨论里还没有人发言。'}
                 onRetry={retry}
                 hasOlder={hasOlder}
                 loadingOlder={loadingOlder}

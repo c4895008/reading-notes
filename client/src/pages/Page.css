@@ -1,16 +1,25 @@
 .page {
-  max-width: var(--content-width);
+  width: min(100%, calc(var(--content-width) + 64px));
   margin: 0 auto;
-  padding: 48px 24px 64px;
+  padding: 44px 32px 72px;
 }
 
 .page-title {
   font-size: 32px;
-  letter-spacing: 0.02em;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+}
+
+.page-eyebrow {
+  margin-bottom: 7px;
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
 }
 
 .page-hint {
-  margin-top: 12px;
+  margin-top: 10px;
   color: var(--muted);
   font-size: var(--text-ui);
 }
@@ -29,12 +38,12 @@
 }
 
 .nf-mark {
+  margin-bottom: 16px;
+  color: var(--faint);
   font-family: var(--font-display);
   font-size: 56px;
   line-height: 1;
-  color: var(--faint);
   letter-spacing: 0.08em;
-  margin-bottom: 16px;
 }
 
 .account-card {
@@ -44,21 +53,22 @@
   gap: 16px;
   margin-top: 40px;
   padding: 24px;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .account-who {
-  flex: 1;
   min-width: 0;
+  flex: 1;
 }
 
 .account-name {
+  overflow-wrap: anywhere;
+  color: var(--ink);
   font-family: var(--font-display);
   font-size: 20px;
-  color: var(--ink);
-  overflow-wrap: anywhere;
 }
 
 .account-username {
@@ -66,13 +76,13 @@
   color: var(--muted);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 899px) {
   .page {
-    padding: 28px 18px 40px;
+    padding: 28px 18px 48px;
   }
 
   .page-title {
-    font-size: 26px;
+    font-size: 27px;
   }
 
   .page-center {

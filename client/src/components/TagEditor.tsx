@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { createTag, listTags, setNoteTags, TAG_NAME_MAX, type NoteTag } from '../api/tags';
+import { createTag, listTags, setNoteTags, TAG_NAME_MAX, TAGS_CHANGED, type NoteTag } from '../api/tags';
 import { useToast } from './Toast';
 import { XIcon } from './Icons';
 import './Tags.css';
@@ -20,9 +20,23 @@ export default function TagEditor({ noteId, tags, onChange }: Props) {
   const dropListId = useId();
 
   useEffect(() => {
-    listTags()
-      .then((items) => setAll(items))
-      .catch(() => {});
+    let ctrl: AbortController;
+    const refresh = () => {
+      ctrl?.abort();
+      ctrl = new AbortController();
+      const { signal } = ctrl;
+      listTags(signal)
+        .then((items) => {
+          if (!signal.aborted) setAll(items);
+        })
+        .catch(() => {});
+    };
+    refresh();
+    window.addEventListener(TAGS_CHANGED, refresh);
+    return () => {
+      ctrl.abort();
+      window.removeEventListener(TAGS_CHANGED, refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -119,6 +133,7 @@ export default function TagEditor({ noteId, tags, onChange }: Props) {
           value={input}
           maxLength={TAG_NAME_MAX}
           autoComplete="off"
+          aria-label="添加标签"
           aria-expanded={showDrop}
           aria-controls={showDrop ? dropListId : undefined}
           onFocus={() => setOpen(true)}

@@ -27,18 +27,32 @@ export const NoteIcon = ({ size = 22 }: IconProps) => (
   </svg>
 );
 
+export const TreeIcon = ({ size = 22 }: IconProps) => (
+  <svg {...base(size)}>
+    <rect x="4" y="4" width="6" height="5" rx="1" />
+    <rect x="14" y="15" width="6" height="5" rx="1" />
+    <path d="M7 9v3.5h10V15M7 12.5V17h7" />
+  </svg>
+);
+
+export const ListIcon = ({ size = 18 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M8.5 5.5h11M8.5 12h11M8.5 18.5h11" />
+    <path d="M4 5.5h.01M4 12h.01M4 18.5h.01" />
+  </svg>
+);
+
+export const TagIcon = ({ size = 18 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M4 5.5V12l7.5 7.5 8-8L12 4H5.5A1.5 1.5 0 0 0 4 5.5Z" />
+    <circle cx="8.5" cy="8.5" r="1" />
+  </svg>
+);
+
 export const UserIcon = ({ size = 22 }: IconProps) => (
   <svg {...base(size)}>
     <circle cx="12" cy="8" r="3.5" />
     <path d="M5 19.5c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5" />
-  </svg>
-);
-
-export const PanelLeftIcon = ({ size = 18 }: IconProps) => (
-  <svg {...base(size)}>
-    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
-    <path d="M9.5 4.5v15" />
-    <path d="m14.5 9.5-2.5 2.5 2.5 2.5" />
   </svg>
 );
 

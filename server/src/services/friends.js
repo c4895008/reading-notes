@@ -144,7 +144,7 @@ export async function acceptRequest(meId, requestId) {
 export const rejectRequest = (meId, requestId) => respond(meId, requestId, 'reject');
 export const withdrawRequest = (meId, requestId) => respond(meId, requestId, 'withdraw');
 
-// 只改关系状态；笔谈参与记录与消息全部保留，资格由「是否互为读友」动态判定
+// 只改关系状态；讨论参与记录与消息全部保留，资格由「是否互为读友」动态判定
 export async function removeFriend(meId, otherId) {
   const [res] = await pool.query(
     'UPDATE friendship SET status = ?, ended_at = CURRENT_TIMESTAMP(3) WHERE live_pair = ? AND status = ?',

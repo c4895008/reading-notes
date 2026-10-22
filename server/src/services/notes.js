@@ -70,7 +70,7 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
     where.push('EXISTS (SELECT 1 FROM note_tag nt WHERE nt.note_id = n.id AND nt.tag_id = ?)');
     params.push(tag);
   }
-  const [[rows], index] = await Promise.all([
+  const [[rows], [countRows], index] = await Promise.all([
     pool.query(
       `SELECT n.id, n.parent_id, n.title,
               LEFT(n.content_text, ${EXCERPT_LENGTH + 1}) AS content_head,
@@ -83,6 +83,7 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
         LIMIT ? OFFSET ?`,
       [...params, pageSize + 1, (page - 1) * pageSize],
     ),
+    pool.query(`SELECT COUNT(*) AS n FROM note n WHERE ${where.join(' AND ')}`, params),
     loadIndex(pool, userId),
   ]);
   const tagMap = await tagsForNotes(rows.slice(0, pageSize).map((r) => r.id));
@@ -104,6 +105,7 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
     }),
     page,
     page_size: pageSize,
+    total: Number(countRows[0].n),
     has_more: rows.length > pageSize,
   };
 }

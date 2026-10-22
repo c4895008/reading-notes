@@ -1,22 +1,32 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { listTags, TAGS_CHANGED, type Tag } from '../api/tags';
+import { useAuth } from '../auth/AuthContext';
 import { refreshPendingCount, setPendingCount, usePendingCount } from '../lib/pendingRequests';
 import { refreshUnreadTalks, setUnreadTalks, useUnreadTalks } from '../lib/unreadTalks';
 import AvatarMenu from './AvatarMenu';
 import { ExplorerProvider } from './Explorer';
-import { FriendsIcon, GearIcon, LogoIcon, NoteIcon, PanelLeftIcon, TalkIcon, UserIcon } from './Icons';
+import {
+  FriendsIcon,
+  GearIcon,
+  LogoIcon,
+  NoteIcon,
+  PlusIcon,
+  TagIcon,
+  TalkIcon,
+  UserIcon,
+} from './Icons';
 import './AppShell.css';
 
 const POLL_MS = 30_000;
-const COLLAPSE_KEY = 'rn.explorer.collapsed';
 
-const NAV = [
-  { to: '/notes', label: '笔记', Icon: NoteIcon },
-  { to: '/talks', label: '笔谈', Icon: TalkIcon },
+const PRIMARY_NAV = [
+  { to: '/notes', label: '全部笔记', Icon: NoteIcon },
+  { to: '/talks', label: '讨论', Icon: TalkIcon },
   { to: '/friends', label: '读友', Icon: FriendsIcon },
 ];
 
-const TABS = [...NAV, { to: '/settings', label: '我的', Icon: UserIcon }];
+const TABS = [...PRIMARY_NAV, { to: '/settings', label: '我的', Icon: UserIcon }];
 
 function CountBadge({ n }: { n: number }) {
   return (
@@ -36,24 +46,37 @@ function subscribeOnline(onChange: () => void) {
 }
 
 export default function AppShell() {
+  const location = useLocation();
+  const { user } = useAuth();
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine);
   const pending = usePendingCount();
   const unreadTalks = useUnreadTalks();
+  const [tags, setTags] = useState<Tag[]>([]);
   const [explorer, setExplorer] = useState<{ key: string; node: ReactNode } | null>(null);
-  const [collapsed, setCollapsed] = useState(
-    () => window.localStorage.getItem(COLLAPSE_KEY) === '1',
-  );
 
   const setExplorerContent = useCallback((key: string, node: ReactNode | null) => {
     setExplorer(node === null ? null : { key, node });
   }, []);
 
-  const toggleExplorer = useCallback(() => {
-    setCollapsed((v) => {
-      window.localStorage.setItem(COLLAPSE_KEY, v ? '0' : '1');
-      return !v;
-    });
-  }, []);
+  useEffect(() => {
+    let ctrl: AbortController;
+    const refresh = () => {
+      ctrl?.abort();
+      ctrl = new AbortController();
+      const signal = ctrl.signal;
+      listTags(signal)
+        .then((items) => {
+          if (!signal.aborted) setTags(items);
+        })
+        .catch(() => {});
+    };
+    refresh();
+    window.addEventListener(TAGS_CHANGED, refresh);
+    return () => {
+      ctrl.abort();
+      window.removeEventListener(TAGS_CHANGED, refresh);
+    };
+  }, [location.key]);
 
   useEffect(() => {
     const refresh = () => {
@@ -82,9 +105,14 @@ export default function AppShell() {
 
   const navAriaLabel = (to: string, label: string) => {
     if (to === '/friends' && pending > 0) return `${label}，${pending} 份待处理的读友申请`;
-    if (to === '/talks' && unreadTalks > 0) return `${label}，${unreadTalks} 场笔谈有未读消息`;
+    if (to === '/talks' && unreadTalks > 0) return `${label}，${unreadTalks} 场讨论有未读消息`;
     return label;
   };
+
+  const params = new URLSearchParams(location.search);
+  const tagParam = params.get('tag');
+  const activeTag = tagParam && /^[1-9]\d*$/.test(tagParam) ? tagParam : null;
+  const allNotesActive = location.pathname.startsWith('/notes') && !activeTag;
 
   return (
     <ExplorerProvider setter={setExplorerContent}>
@@ -99,70 +127,103 @@ export default function AppShell() {
           </p>
         )}
 
-        <aside className="rail" aria-label="主导航">
-          <Link to="/notes" className="rail-logo" aria-label="读书笔记">
-            <LogoIcon size={26} />
-          </Link>
+        <aside className="primary-sidebar" aria-label="主导航">
+          <div className="sidebar-head">
+            <Link to="/notes" className="workspace-brand" aria-label="读书笔记首页">
+              <span className="workspace-logo">
+                <LogoIcon size={20} />
+              </span>
+              <span className="workspace-copy">
+                <strong>读书笔记</strong>
+                <small>结构化阅读与思考</small>
+              </span>
+            </Link>
 
-          <nav className="rail-nav">
-            {NAV.map(({ to, label, Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className="rail-link"
-                aria-label={navAriaLabel(to, label)}
-                title={label}
-              >
-                <span className="rail-icon">
-                  <Icon />
-                  {badgeFor(to)}
-                </span>
+            <Link to="/notes/new" className="new-note-button" aria-label="写笔记" title="写笔记">
+              <PlusIcon size={18} />
+              <span>写笔记</span>
+            </Link>
+          </div>
+
+          <div className="sidebar-scroll">
+            <nav className="sidebar-section" aria-label="知识沉淀">
+              <p className="sidebar-caption">知识沉淀</p>
+              <Link to="/notes" className="sidebar-link" aria-label="全部笔记" title="全部笔记" aria-current={allNotesActive ? 'page' : undefined}>
+                <span className="sidebar-link-icon"><NoteIcon size={19} /></span>
+                <span className="sidebar-link-label">全部笔记</span>
+              </Link>
+              <Link to="/tags" className="sidebar-link" aria-label="标签管理" title="标签管理" aria-current={location.pathname === '/tags' ? 'page' : undefined}>
+                <span className="sidebar-link-icon"><TagIcon size={17} /></span>
+                <span className="sidebar-link-label">标签管理</span>
+              </Link>
+            </nav>
+
+            {tags.length > 0 && (
+              <nav className="sidebar-section sidebar-tags" aria-label="标签">
+                <p className="sidebar-caption">标签</p>
+                {tags.map((tag) => (
+                  <Link
+                    key={tag.id}
+                    to={`/notes?tag=${tag.id}`}
+                    className="sidebar-link"
+                    aria-current={location.pathname === '/notes' && activeTag === String(tag.id) ? 'page' : undefined}
+                  >
+                    <span className="sidebar-link-icon"><TagIcon size={17} /></span>
+                    <span className="sidebar-link-label">{tag.name}</span>
+                    <span className="sidebar-count">{tag.note_count}</span>
+                  </Link>
+                ))}
+              </nav>
+            )}
+
+            <nav className="sidebar-section" aria-label="交流协作">
+              <p className="sidebar-caption">交流协作</p>
+              <NavLink to="/talks" className="sidebar-link" aria-label={navAriaLabel('/talks', '讨论')} title="讨论">
+                <span className="sidebar-link-icon"><TalkIcon size={19} /></span>
+                <span className="sidebar-link-label">讨论</span>
+                {unreadTalks > 0 && <CountBadge n={unreadTalks} />}
               </NavLink>
-            ))}
-          </nav>
+              <NavLink to="/friends" className="sidebar-link" aria-label={navAriaLabel('/friends', '读友')} title="读友">
+                <span className="sidebar-link-icon"><FriendsIcon size={19} /></span>
+                <span className="sidebar-link-label">读友</span>
+                {pending > 0 && <CountBadge n={pending} />}
+              </NavLink>
+            </nav>
+          </div>
 
-          <div className="rail-foot">
-            <NavLink to="/settings" className="rail-link" aria-label="设置" title="设置">
-              <GearIcon />
+          <div className="sidebar-foot">
+            <NavLink to="/settings" className="sidebar-link sidebar-settings" aria-label="设置" title="设置">
+              <span className="sidebar-link-icon"><GearIcon size={19} /></span>
+              <span className="sidebar-link-label">设置</span>
             </NavLink>
-            <AvatarMenu />
+            <div className="sidebar-account">
+              <AvatarMenu />
+              <div className="sidebar-account-copy">
+                <strong>{user?.nickname}</strong>
+                <span>@{user?.username}</span>
+              </div>
+            </div>
           </div>
         </aside>
 
         <header className="appbar">
           <Link to="/notes" className="brand">
-            读书笔记
+            <LogoIcon size={20} />
+            <span>读书笔记</span>
+          </Link>
+          <Link to="/notes/new" className="appbar-new" aria-label="写笔记">
+            <PlusIcon size={19} />
           </Link>
         </header>
 
         <div className="shell-body">
-          {explorer && !collapsed && (
+          {explorer && (
             <aside className="explorer" aria-label="浏览面板">
-              <button
-                type="button"
-                className="icon-btn explorer-collapse"
-                onClick={toggleExplorer}
-                aria-label="收起浏览面板"
-                title="收起浏览面板"
-              >
-                <PanelLeftIcon size={18} />
-              </button>
               <div className="explorer-body" key={explorer.key}>{explorer.node}</div>
             </aside>
           )}
 
           <main id="main" className="shell-main" tabIndex={-1}>
-            {explorer && collapsed && (
-              <button
-                type="button"
-                className="icon-btn explorer-restore"
-                onClick={toggleExplorer}
-                aria-label="展开浏览面板"
-                title="展开浏览面板"
-              >
-                <PanelLeftIcon size={18} />
-              </button>
-            )}
             <Outlet />
           </main>
         </div>

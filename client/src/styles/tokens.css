@@ -1,65 +1,69 @@
 :root {
-  /* 画布与表面 —— 中性灰白客户端风格 */
-  --paper: #f7f7f5;
+  --paper: #f9f9fb;
   --surface: #ffffff;
   --surface-strong: #ffffff;
-  --surface-2: #fafaf9;
-  --sidebar: #f2f2f0;
-  --sidebar-active: #ffffff;
+  --surface-2: #f3f3f5;
+  --surface-3: #eeeef0;
+  --sidebar: #f3f3f5;
+  --sidebar-active: #e2e2e4;
 
-  /* 墨色阶梯 */
-  --ink: #1e1e1c;
-  --ink-hover: #35352f;
-  --ink-soft: #4a4a44;
-  --muted: #75756d;
-  --faint: #a8a89e;
+  --ink: #1a1c1d;
+  --ink-hover: #303234;
+  --ink-soft: #46464a;
+  --muted: #6f6f75;
+  --faint: #97969c;
 
-  /* 线条 */
-  --line: rgba(30, 30, 28, 0.1);
-  --line-strong: rgba(30, 30, 28, 0.18);
+  --line: rgba(26, 28, 29, 0.1);
+  --line-strong: rgba(26, 28, 29, 0.18);
 
-  /* 强调色 —— 克制的蓝，用于链接/焦点/选中 */
-  --accent: #3a6ea5;
-  --accent-deep: #2d587f;
-  --accent-soft: #e9f0f7;
-  --accent-faint: #f3f7fb;
+  --accent: #0066cc;
+  --accent-deep: #0050a4;
+  --accent-soft: #e7f0ff;
+  --accent-faint: #f2f7ff;
 
-  /* 状态色 */
-  --success: #2e7d4f;
-  --success-soft: #e7f2eb;
-  --danger: #a04337;
-  --danger-deep: #823327;
-  --danger-soft: #f8edeb;
-  --warning-bg: #f4ead2;
-  --warning-ink: #6d5a1e;
+  --success: #087f5b;
+  --success-deep: #066447;
+  --success-soft: #e8f7f0;
+  --danger: #b42318;
+  --danger-deep: #8f1c14;
+  --danger-soft: #fff0ee;
+  --warning-bg: #fff5d6;
+  --warning-ink: #705600;
 
-  /* 字体：标题与正文统一无衬线 */
-  --font-display: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Hiragino Sans GB',
-    'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
-  --font-sans: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Hiragino Sans GB', 'Microsoft YaHei',
-    'Noto Sans SC', system-ui, sans-serif;
-  --font-mono: 'SF Mono', Menlo, Consolas, monospace;
+  --font-display: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-reading: 'Songti SC', 'Noto Serif SC', 'STSong', Georgia, serif;
+  --font-mono: 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
 
   --text-body: 17px;
-  --leading-body: 1.9;
+  --leading-body: 1.75;
   --text-ui: 14px;
   --text-ui-sm: 13px;
   --text-aux: 12px;
 
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
   --radius-pill: 999px;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.08);
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-page: 240ms;
-  --dur-layer: 200ms;
+  --dur-layer: 180ms;
 
-  /* 客户端外壳尺寸 */
-  --rail-width: 56px;
-  --explorer-width: 248px;
+  --nav-width: 256px;
+  --rail-width: var(--nav-width);
+  --explorer-width: 410px;
+  --discussion-width: 320px;
   --nav-height: 56px;
   --tabbar-height: 64px;
-  --content-width: 760px;
+  --content-width: 960px;
+  --reader-width: 720px;
   --touch: 40px;
 }

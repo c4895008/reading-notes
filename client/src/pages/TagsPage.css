@@ -1,0 +1,14 @@
+.tags-page .tagsec {
+  margin-top: 24px;
+  padding: 0;
+  border-top: 0;
+}
+
+.tags-page .tagsec-head {
+  padding: 0 4px 8px;
+}
+
+.tags-page .tagsec-title {
+  font-size: var(--text-ui);
+  letter-spacing: 0.02em;
+}

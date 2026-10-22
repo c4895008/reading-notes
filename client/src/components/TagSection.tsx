@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { createTag, deleteTag, listTags, renameTag, TAG_NAME_MAX, type Tag } from '../api/tags';
+import { createTag, deleteTag, listTags, renameTag, TAG_NAME_MAX, TAGS_CHANGED, type Tag } from '../api/tags';
 import ConfirmDialog from './ConfirmDialog';
 import { MoreIcon, PlusIcon } from './Icons';
 import './Tags.css';
@@ -24,10 +24,18 @@ export default function TagSection() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const onTagsChanged = () => setReload((n) => n + 1);
+    window.addEventListener(TAGS_CHANGED, onTagsChanged);
+    return () => window.removeEventListener(TAGS_CHANGED, onTagsChanged);
+  }, []);
+
+  useEffect(() => {
     const ctrl = new AbortController();
     setState((s) => (s.status === 'error' ? { status: 'loading' } : s));
     listTags(ctrl.signal)
-      .then((items) => setState({ status: 'ready', items }))
+      .then((items) => {
+        if (!ctrl.signal.aborted) setState({ status: 'ready', items });
+      })
       .catch((e: ApiError) => {
         if (!ctrl.signal.aborted) setState({ status: 'error', message: e.message });
       });
@@ -55,7 +63,6 @@ export default function TagSection() {
     try {
       await createTag(name);
       setDraft('');
-      setReload((n) => n + 1);
     } catch (e) {
       setError((e as ApiError).message);
     } finally {
@@ -82,7 +89,6 @@ export default function TagSection() {
     try {
       await renameTag(renaming.id, name);
       setRenaming(null);
-      setReload((n) => n + 1);
     } catch (e) {
       setError((e as ApiError).message);
     } finally {
@@ -97,7 +103,6 @@ export default function TagSection() {
     try {
       await deleteTag(removing.id);
       setRemoving(null);
-      setReload((n) => n + 1);
     } catch (e) {
       setError((e as ApiError).message);
     } finally {

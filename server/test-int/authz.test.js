@@ -61,7 +61,7 @@ test('甲的 Token 操作乙的笔记：一律 404，无内容', async () => {
   assert.equal((await api('GET', '/notes/abc', { token: a.token })).status, 404);
 });
 
-test('甲不能把笔记挂到乙的笔记下，也不能就乙的笔记发起笔谈', async () => {
+test('甲不能把笔记挂到乙的笔记下，也不能就乙的笔记发起讨论', async () => {
   expectDenied(
     await api('POST', '/notes', { token: a.token, body: { title: 'x', content: 'x', parent_id: bNote.id } }),
     404,
@@ -81,7 +81,7 @@ test('甲的列表、树、搜索看不到乙的笔记', async () => {
   }
 });
 
-test('局外人对乙的笔谈：全部 404，无内容', async () => {
+test('局外人对乙的讨论：全部 404，无内容', async () => {
   const t = a.token;
   expectDenied(await api('GET', `/discussions/${talk}`, { token: t }), 404, 'DISCUSSION_NOT_FOUND');
   expectDenied(await api('GET', `/discussions/${talk}/messages`, { token: t }), 404, 'DISCUSSION_NOT_FOUND');
