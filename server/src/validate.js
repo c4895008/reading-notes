@@ -41,6 +41,7 @@ export function checkNickname(value) {
 }
 
 export const NOTE_LIMITS = { title: 80, quote: 2000, content: 20000 };
+export const NOTE_KINDS = ['viewpoint', 'question', 'summary'];
 // 引文与正文允许换行与制表符
 const MULTILINE_CONTROL_RE = /[\u0000-\u0008\u000b-\u001f\u007f]/;
 const normalizeNewlines = (s) => s.replace(/\r\n?/g, '\n');
@@ -51,6 +52,12 @@ export function parseNoteInput(body) {
   let title = null;
   let quote = null;
   let content = '';
+  let kind = 'viewpoint';
+
+  if (body.kind !== undefined) {
+    if (NOTE_KINDS.includes(body.kind)) kind = body.kind;
+    else errors.kind = body.kind === null ? '请选择分类' : '分类不正确';
+  }
 
   if (typeof body.title !== 'string' || !body.title.trim()) errors.title = '请填写标题';
   else {
@@ -81,7 +88,7 @@ export function parseNoteInput(body) {
   }
 
   assertValid(errors);
-  return { title, quote, content };
+  return { title, quote, content, kind };
 }
 
 export const TAG_NAME_MAX = 40;

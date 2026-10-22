@@ -26,9 +26,17 @@ test('parseNoteInput 规整三字段', () => {
     title: '标题',
     quote: 'a\nb',
     content: '  code',
+    kind: 'viewpoint',
   });
-  assert.deepEqual(parseNoteInput({ title: 't', quote: '   ', content: ' \n ' }), { title: 't', quote: null, content: '' });
-  assert.deepEqual(parseNoteInput({ title: 't' }), { title: 't', quote: null, content: '' });
+  assert.deepEqual(parseNoteInput({ title: 't', quote: '   ', content: ' \n ' }), { title: 't', quote: null, content: '', kind: 'viewpoint' });
+  assert.deepEqual(parseNoteInput({ title: 't' }), { title: 't', quote: null, content: '', kind: 'viewpoint' });
+});
+
+test('parseNoteInput 分类必选：默认观点，只接受观点/问题/总结', () => {
+  for (const kind of ['viewpoint', 'question', 'summary']) assert.equal(parseNoteInput({ title: 't', kind }).kind, kind);
+  assert.equal(fieldsOf(() => parseNoteInput({ title: 't', kind: null })).kind, '请选择分类');
+  assert.ok(fieldsOf(() => parseNoteInput({ title: 't', kind: 'idea' })).kind);
+  assert.ok(fieldsOf(() => parseNoteInput({ title: 't', kind: 1 })).kind);
 });
 
 test('parseNoteInput 按码点计数并拦截越界', () => {

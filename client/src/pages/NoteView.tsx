@@ -10,6 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { useExplorerContent } from '../components/Explorer';
 import { BackIcon, MountIcon, PenIcon, RefineIcon, SupplementIcon, TalkIcon, TrashIcon, UnmountIcon } from '../components/Icons';
 import { NoteBody, QuoteBlock } from '../components/NoteContent';
+import { KindBadge } from '../components/NoteKind';
 import NotesExplorer from '../components/NotesExplorer';
 import NoteThread from '../components/NoteThread';
 import InviteDialog, { type InviteTarget } from '../components/InviteDialog';
@@ -363,6 +364,7 @@ export default function NoteView() {
               )}
               <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
                 <div className="reading-topmeta">
+                  <KindBadge kind={note.kind} />
                   <span className="reading-depth">{note.ancestors.length === 0 ? '顶层笔记' : `第 ${note.ancestors.length + 1} 层笔记`}</span>
                   <TimeMeta note={note} />
                 </div>

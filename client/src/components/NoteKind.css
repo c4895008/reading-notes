@@ -1,0 +1,86 @@
+.kind-viewpoint {
+  --kind-dot: var(--accent);
+  --kind-bg: var(--accent-soft);
+  --kind-ink: var(--accent-deep);
+}
+
+.kind-question {
+  --kind-dot: #f08c00;
+  --kind-bg: #fff3e0;
+  --kind-ink: #a85300;
+}
+
+.kind-summary {
+  --kind-dot: #12a36d;
+  --kind-bg: var(--success-soft);
+  --kind-ink: var(--success-deep);
+}
+
+.kind-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kind-dot);
+}
+
+.kind-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.kind-label {
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--kind-bg);
+  color: var(--kind-ink);
+  font-size: var(--text-aux);
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.kind-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.kind-picker .editor-label {
+  margin-bottom: 0;
+}
+
+.kind-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kind-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--text-ui-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 160ms var(--ease), border-color 160ms var(--ease), color 160ms var(--ease);
+}
+
+.kind-option:hover {
+  border-color: var(--line-strong);
+}
+
+.kind-option[aria-checked='true'] {
+  border-color: var(--kind-dot);
+  background: var(--kind-bg);
+  color: var(--kind-ink);
+  font-weight: 600;
+}

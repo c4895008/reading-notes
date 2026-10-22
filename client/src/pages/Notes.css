@@ -953,7 +953,7 @@ a.note-item:hover {
 }
 
 .reading-depth {
-  color: var(--success-deep);
+  color: var(--ink-soft);
   font-size: var(--text-aux);
   font-weight: 600;
 }

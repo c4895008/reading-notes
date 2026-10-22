@@ -23,7 +23,7 @@ notesRouter.use(requireAuth);
 const ID_RE = /^[1-9]\d{0,15}$/;
 const PAGE_SIZE = { default: 20, max: 50 };
 const QUERY_MAX = 100;
-const NOTE_FIELDS = ['title', 'quote', 'content'];
+const NOTE_FIELDS = ['title', 'quote', 'content', 'kind'];
 
 function noteId(req) {
   const id = Number(req.params.id);

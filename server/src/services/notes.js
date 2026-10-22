@@ -11,7 +11,12 @@ export const EXCERPT_LENGTH = 80;
 
 export const noteNotFound = () => new AppError(404, 'NOTE_NOT_FOUND', '无权访问或不存在');
 
-const DETAIL_COLUMNS = 'id, parent_id, title, quote, content, created_at, updated_at';
+const DETAIL_COLUMNS = 'id, parent_id, title, quote, content, kind, created_at, updated_at';
+
+const KIND_CODE = { viewpoint: 1, question: 2, summary: 3 };
+const KIND_NAME = { 1: 'viewpoint', 2: 'question', 3: 'summary' };
+const kindName = (code) => KIND_NAME[code] ?? null;
+const kindCode = (name) => KIND_CODE[name] ?? null;
 
 const brief = (n) => ({ id: n.id, title: n.title });
 
@@ -72,7 +77,7 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
   }
   const [[rows], [countRows], index] = await Promise.all([
     pool.query(
-      `SELECT n.id, n.parent_id, n.title,
+      `SELECT n.id, n.parent_id, n.title, n.kind,
               LEFT(n.content_text, ${EXCERPT_LENGTH + 1}) AS content_head,
               LEFT(n.quote, ${EXCERPT_LENGTH * 4}) AS quote_head,
               n.created_at, n.updated_at, d.status AS discussion_status
@@ -94,6 +99,7 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
         id: row.id,
         parent_id: row.parent_id,
         title: row.title,
+        kind: kindName(row.kind),
         ...excerptOf(row),
         depth: ancestors.length,
         ...(q ? { path: ancestors.map(brief) } : {}),
@@ -144,6 +150,7 @@ export async function getNote(userId, id) {
     title: row.title,
     quote: row.quote,
     content: row.content,
+    kind: kindName(row.kind),
     tags,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -167,10 +174,10 @@ export async function captureSnapshot(conn, userId, id) {
   return { note: chain.pop(), ancestors: chain };
 }
 
-async function insertNote(conn, userId, { parent_id, sort_order }, { title, quote, content }) {
+async function insertNote(conn, userId, { parent_id, sort_order }, { title, quote, content, kind }) {
   const [result] = await conn.query(
-    'INSERT INTO note (user_id, parent_id, sort_order, title, quote, content, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [userId, parent_id, sort_order, title, quote, content, markdownToText(content)],
+    'INSERT INTO note (user_id, parent_id, sort_order, title, quote, content, content_text, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [userId, parent_id, sort_order, title, quote, content, markdownToText(content), kindCode(kind)],
   );
   return result.insertId;
 }
@@ -184,16 +191,19 @@ export async function createNote(userId, input, parentId = null) {
   return getNote(userId, id);
 }
 
-export async function updateNote(userId, id, { title, quote, content }) {
+export async function updateNote(userId, id, { title, quote, content, kind }) {
   const current = await findOwnRow(userId, id);
   if (!current) throw noteNotFound();
-  if (current.title === title && current.quote === quote && current.content === content) return getNote(userId, id);
+  const code = kindCode(kind);
+  if (current.title === title && current.quote === quote && current.content === content && current.kind === code) {
+    return getNote(userId, id);
+  }
 
   // 只改内容，不动 parent_id / sort_order（编辑不变位）
   const [result] = await pool.query(
-    `UPDATE note SET title = ?, quote = ?, content = ?, content_text = ?, updated_at = CURRENT_TIMESTAMP(3)
+    `UPDATE note SET title = ?, quote = ?, content = ?, content_text = ?, kind = ?, updated_at = CURRENT_TIMESTAMP(3)
       WHERE id = ? AND user_id = ? AND status = ?`,
-    [title, quote, content, markdownToText(content), id, userId, ACTIVE],
+    [title, quote, content, markdownToText(content), code, id, userId, ACTIVE],
   );
   if (result.affectedRows === 0) throw noteNotFound();
   return getNote(userId, id);

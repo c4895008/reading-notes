@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import { formatTime, fullTime } from '../lib/time';
 import { loadCollapsed, loadLastViewed, saveCollapsed, type NotesView } from '../lib/treeState';
 import { BackIcon, ChevronIcon, ListIcon, PlusIcon, SearchIcon, TreeIcon } from './Icons';
+import { KindBadge } from './NoteKind';
 import NoteTreeView, { TREE_COLLAPSE_OVER } from './NoteTree';
 import './NotesBrowser.css';
 import '../pages/Notes.css';
@@ -410,6 +411,7 @@ function ListPane({
           >
             <span className="note-title">{note.title}</span>
             <span className="note-meta">
+              <KindBadge kind={note.kind} />
               {note.discussion_status && (
                 <span className={`pill${note.discussion_status === 'active' ? ' pill-accent' : ''}`}>
                   {note.discussion_status === 'active' ? '讨论中' : '已完结'}
@@ -449,6 +451,15 @@ function TreePane({ userId, back, currentId, onCount }: { userId: number; back: 
         if (ctrl.signal.aborted) return;
         setState({ status: 'ready', items });
         onCount(items.length);
+        setCollapsed((c) => {
+          if (c) return c;
+          // 从未记录过折叠态：默认全展开，节点过多时折叠顶层
+          const initial = new Set(
+            items.length > TREE_COLLAPSE_OVER ? items.filter((n) => n.depth === 0 && n.child_count > 0).map((n) => n.id) : [],
+          );
+          saveCollapsed(userId, initial);
+          return initial;
+        });
       })
       .catch((e: ApiError) => {
         if (!ctrl.signal.aborted) setState({ status: 'error', message: e.message });
@@ -476,7 +487,5 @@ function TreePane({ userId, back, currentId, onCount }: { userId: number; back: 
     );
   }
   if (state.items.length === 0) return <EmptyNotes />;
-  const collapseAll = new Set(state.items.filter((n) => n.depth === 0 && n.child_count > 0).map((n) => n.id));
-  const effective = state.items.length > TREE_COLLAPSE_OVER ? collapseAll : collapsed;
-  return <NoteTreeView items={state.items} collapsed={effective} onToggle={toggle} currentId={current} back={back} cap={cap} />;
+  return <NoteTreeView items={state.items} collapsed={collapsed} onToggle={toggle} currentId={current} back={back} cap={cap} />;
 }

@@ -4,10 +4,13 @@ import type { NoteTag } from './tags';
 
 export type NoteRef = { id: number; title: string };
 
+export type NoteKind = 'viewpoint' | 'question' | 'summary';
+
 export type NoteSummary = {
   id: number;
   parent_id: number | null;
   title: string;
+  kind: NoteKind | null;
   excerpt: string;
   excerpt_source: 'content' | 'quote' | 'none';
   depth: number;
@@ -26,6 +29,7 @@ export type Note = {
   title: string;
   quote: string | null;
   content: string;
+  kind: NoteKind | null;
   tags: NoteTag[];
   created_at: string;
   updated_at: string;
@@ -43,7 +47,7 @@ export type TreeItem = {
   updated_at: string;
 };
 
-export type NoteInput = { title: string; quote: string | null; content: string };
+export type NoteInput = { title: string; quote: string | null; content: string; kind: NoteKind };
 
 export type NotePage = {
   items: NoteSummary[];

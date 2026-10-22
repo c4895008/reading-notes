@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type TextareaHTMLAttributes } from 'react';
 import { useBlocker, useLocation, useNavigate, useParams, useSearchParams, type BlockerFunction } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { createNote, getNote, NOTE_LIMITS, promoteNote, updateNote, type NoteInput, type NoteRef } from '../api/notes';
+import { createNote, getNote, NOTE_LIMITS, promoteNote, updateNote, type NoteInput, type NoteKind, type NoteRef } from '../api/notes';
 import { TAGS_CHANGED, type NoteTag } from '../api/tags';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useExplorerContent } from '../components/Explorer';
 import { BackIcon } from '../components/Icons';
 import { NoteBody, QuoteBlock } from '../components/NoteContent';
+import { KindBadge, KindPicker } from '../components/NoteKind';
 import NotesExplorer from '../components/NotesExplorer';
 import { useToast } from '../components/Toast';
 import TagEditor from '../components/TagEditor';
@@ -15,14 +16,14 @@ import { NoteMissing, ReadingSkeleton } from './NoteView';
 import './Page.css';
 import './Notes.css';
 
-type Draft = { title: string; quote: string; content: string };
+type Draft = { title: string; quote: string; content: string; kind: NoteKind };
 type FieldErrors = Partial<Record<keyof Draft, string>>;
 type NavState = { fromView?: boolean; back?: string } | null;
 type Mode = 'create' | 'edit' | 'refine' | 'supplement';
 
 const ID_RE = /^[1-9]\d{0,15}$/;
 
-const EMPTY: Draft = { title: '', quote: '', content: '' };
+const EMPTY: Draft = { title: '', quote: '', content: '', kind: 'viewpoint' };
 const SAVE_FAILED = '这次没有保存成功。内容还在，可以再试一次。';
 
 const count = (s: string) => [...s].length;
@@ -31,6 +32,7 @@ const toInput = (d: Draft): NoteInput => ({
   title: d.title.trim(),
   quote: d.quote.trim() ? d.quote : null,
   content: d.content.trim() ? d.content : '',
+  kind: d.kind,
 });
 
 function AutoGrow(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -115,7 +117,7 @@ export default function NoteEditor({ refine, under = null }: Props) {
       .then((note) => {
         if (ctrl.signal.aborted) return;
         if (mode === 'edit') {
-          const loaded = { title: note.title, quote: note.quote ?? '', content: note.content };
+          const loaded = { title: note.title, quote: note.quote ?? '', content: note.content, kind: note.kind ?? 'viewpoint' };
           setInitial(loaded);
           setDraft(loaded);
           setEditTags(refreshedTags.current ?? note.tags);
@@ -159,7 +161,8 @@ export default function NoteEditor({ refine, under = null }: Props) {
     if (!isEdit && loadState === 'ready') titleRef.current?.focus();
   }, [isEdit, loadState]);
 
-  const dirty = draft.title !== initial.title || draft.quote !== initial.quote || draft.content !== initial.content;
+  const dirty =
+    draft.title !== initial.title || draft.quote !== initial.quote || draft.content !== initial.content || draft.kind !== initial.kind;
 
   const shouldBlock = useCallback<BlockerFunction>(
     // 提炼编辑器与阅读页同一路径，只靠 history state 区分，因此任何离开都要拦
@@ -186,7 +189,7 @@ export default function NoteEditor({ refine, under = null }: Props) {
   };
   const canSave = titleLength > 0 && !over.title && !over.quote && !over.content && !saving && loadState === 'ready';
 
-  const update = (field: keyof Draft) => (e: { target: { value: string } }) => {
+  const update = (field: 'title' | 'quote' | 'content') => (e: { target: { value: string } }) => {
     setDraft((d) => ({ ...d, [field]: e.target.value }));
     if (fieldErrors[field]) setFieldErrors((f) => ({ ...f, [field]: undefined }));
   };
@@ -295,6 +298,17 @@ export default function NoteEditor({ refine, under = null }: Props) {
           }}
         >
           <div className="editor-field">
+            <KindPicker
+              value={draft.kind}
+              onChange={(kind) => {
+                setDraft((d) => ({ ...d, kind }));
+                if (fieldErrors.kind) setFieldErrors((f) => ({ ...f, kind: undefined }));
+              }}
+            />
+            {fieldErrors.kind && <span className="field-msg is-error">{fieldErrors.kind}</span>}
+          </div>
+
+          <div className="editor-field">
             <label htmlFor="note-title" className="visually-hidden">
               标题
             </label>
@@ -373,6 +387,9 @@ export default function NoteEditor({ refine, under = null }: Props) {
 
       {loadState === 'ready' && pane === 'preview' && (
         <article className="reading-card editor-preview" aria-label="预览">
+          <div className="reading-topmeta">
+            <KindBadge kind={draft.kind} />
+          </div>
           <h1 className={`reading-title${draft.title.trim() ? '' : ' is-placeholder'}`}>{draft.title.trim() || '（还没有标题）'}</h1>
           {quoteText && <QuoteBlock text={draft.quote.trim()} />}
           {draft.content.trim() ? <NoteBody source={draft.content} /> : <p className="reading-empty">还没有写下想法。</p>}
