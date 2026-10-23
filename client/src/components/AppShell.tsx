@@ -7,6 +7,7 @@ import { refreshUnreadTalks, setUnreadTalks, useUnreadTalks } from '../lib/unrea
 import AvatarMenu from './AvatarMenu';
 import { ExplorerProvider } from './Explorer';
 import {
+  BookIcon,
   FriendsIcon,
   GearIcon,
   LogoIcon,
@@ -112,7 +113,7 @@ export default function AppShell() {
   const params = new URLSearchParams(location.search);
   const tagParam = params.get('tag');
   const activeTag = tagParam && /^[1-9]\d*$/.test(tagParam) ? tagParam : null;
-  const allNotesActive = location.pathname.startsWith('/notes') && !activeTag;
+  const allNotesActive = location.pathname.startsWith('/notes') && !activeTag && !params.get('book');
 
   return (
     <ExplorerProvider setter={setExplorerContent}>
@@ -151,6 +152,10 @@ export default function AppShell() {
               <Link to="/notes" className="sidebar-link" aria-label="全部笔记" title="全部笔记" aria-current={allNotesActive ? 'page' : undefined}>
                 <span className="sidebar-link-icon"><NoteIcon size={19} /></span>
                 <span className="sidebar-link-label">全部笔记</span>
+              </Link>
+              <Link to="/books" className="sidebar-link" aria-label="书架" title="书架" aria-current={location.pathname === '/books' ? 'page' : undefined}>
+                <span className="sidebar-link-icon"><BookIcon size={18} /></span>
+                <span className="sidebar-link-label">书架</span>
               </Link>
               <Link to="/tags" className="sidebar-link" aria-label="标签管理" title="标签管理" aria-current={location.pathname === '/tags' ? 'page' : undefined}>
                 <span className="sidebar-link-icon"><TagIcon size={17} /></span>

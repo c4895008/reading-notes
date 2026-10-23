@@ -14,8 +14,9 @@ import {
   promoteNote,
   updateNote,
 } from '../services/notes.js';
+import { BATCH_MAX, bookNotFound, findBook, setNotesBook } from '../services/books.js';
 import { findTag, setNoteTags, tagNotFound } from '../services/tags.js';
-import { assertValid, charLength, parseNoteInput, readBody } from '../validate.js';
+import { NOTE_KINDS, assertValid, charLength, parseNoteInput, readBody } from '../validate.js';
 
 export const notesRouter = Router();
 notesRouter.use(requireAuth);
@@ -23,7 +24,17 @@ notesRouter.use(requireAuth);
 const ID_RE = /^[1-9]\d{0,15}$/;
 const PAGE_SIZE = { default: 10, max: 50 };
 const QUERY_MAX = 100;
-const NOTE_FIELDS = ['title', 'quote', 'content', 'kind'];
+const NOTE_FIELDS = ['title', 'quote', 'content', 'kind', 'book_id'];
+const DISCUSSION_FILTERS = ['active', 'ended', 'none'];
+const SORTS = ['updated', 'created'];
+
+const optionalOf = (value, allowed) => (value === undefined || value === '' ? null : allowed.includes(value) ? value : NaN);
+
+function parseSince(value) {
+  if (value === undefined || value === '') return null;
+  const date = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/.test(value) ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : NaN;
+}
 
 function noteId(req) {
   const id = Number(req.params.id);
@@ -57,6 +68,10 @@ notesRouter.get(
     const page = positiveInt(req.query.page, 1);
     const pageSize = positiveInt(req.query.page_size, PAGE_SIZE.default);
     const query = typeof q === 'string' ? q.trim() : null;
+    const kind = optionalOf(req.query.kind, NOTE_KINDS);
+    const discussion = optionalOf(req.query.discussion, DISCUSSION_FILTERS);
+    const sort = optionalOf(req.query.sort, SORTS);
+    const since = parseSince(req.query.since);
     assertValid({
       view: view === 'list' || view === 'tree' ? null : '不支持的视图',
       q:
@@ -69,12 +84,26 @@ notesRouter.get(
               : null,
       page: Number.isNaN(page) ? '页码不正确' : null,
       page_size: Number.isNaN(pageSize) || pageSize > PAGE_SIZE.max ? `每页 1–${PAGE_SIZE.max} 条` : null,
+      kind: Number.isNaN(kind) ? '分类不正确' : null,
+      discussion: Number.isNaN(discussion) ? '讨论状态不正确' : null,
+      sort: Number.isNaN(sort) ? '排序方式不正确' : null,
+      since: Number.isNaN(since) ? '时间范围不正确' : null,
     });
     const userId = req.user.id;
     const data =
       view === 'tree'
         ? await listTree(userId)
-        : await listNotes(userId, { q: query, page, pageSize, tag: await ownedTagId(req) });
+        : await listNotes(userId, {
+            q: query,
+            page,
+            pageSize,
+            tag: await ownedTagId(req),
+            book: await ownedBookId(req),
+            kind,
+            discussion,
+            since,
+            sort: sort ?? undefined,
+          });
     res.json({ data });
   }),
 );
@@ -88,6 +117,30 @@ async function ownedTagId(req) {
   if (!tag) throw tagNotFound();
   return tag.id;
 }
+
+// book 查询参数：本人拥有的书籍 id，或 none 表示未归类
+async function ownedBookId(req) {
+  const raw = req.query.book;
+  if (raw === undefined || raw === '') return undefined;
+  if (raw === 'none') return 'none';
+  if (typeof raw !== 'string' || !ID_RE.test(raw)) throw validationError({ book: '书籍不正确' });
+  const book = await findBook(req.user.id, Number(raw));
+  if (!book) throw bookNotFound();
+  return book.id;
+}
+
+notesRouter.put(
+  '/book',
+  ah(async (req, res) => {
+    const { note_ids: ids, book_id: bookId } = readBody(req.body, ['note_ids', 'book_id']);
+    if (!Array.isArray(ids) || !ids.length || ids.some((v) => !Number.isSafeInteger(v) || v <= 0)) {
+      throw validationError({ note_ids: '请选择笔记' });
+    }
+    if (ids.length > BATCH_MAX) throw validationError({ note_ids: `一次最多 ${BATCH_MAX} 条` });
+    if (bookId !== null && !(Number.isSafeInteger(bookId) && bookId > 0)) throw validationError({ book_id: '书籍不正确' });
+    res.json({ data: await setNotesBook(req.user.id, [...new Set(ids)], bookId) });
+  }),
+);
 
 notesRouter.post(
   '/',

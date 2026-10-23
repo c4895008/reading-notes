@@ -4,6 +4,7 @@ import { STATUS_NAME } from './discussion.js';
 import { markdownToText } from './markdown.js';
 import { ancestorsOf, buildIndex, childrenOf, planCreate, planDelete, planMove, planPromote, preorder } from './tree.js';
 import { listNoteTags, tagsForNotes } from './tags.js';
+import { bookNotFound, findBook } from './books.js';
 
 export const ACTIVE = 1;
 export const DELETED = 2;
@@ -11,7 +12,8 @@ export const EXCERPT_LENGTH = 80;
 
 export const noteNotFound = () => new AppError(404, 'NOTE_NOT_FOUND', '无权访问或不存在');
 
-const DETAIL_COLUMNS = 'id, parent_id, title, quote, content, kind, created_at, updated_at';
+const DETAIL_COLUMNS =
+  'n.id, n.parent_id, n.title, n.quote, n.content, n.kind, n.book_id, b.title AS book_title, n.created_at, n.updated_at';
 
 const KIND_CODE = { viewpoint: 1, question: 2, summary: 3 };
 const KIND_NAME = { 1: 'viewpoint', 2: 'question', 3: 'summary' };
@@ -19,6 +21,13 @@ const kindName = (code) => KIND_NAME[code] ?? null;
 const kindCode = (name) => KIND_CODE[name] ?? null;
 
 const brief = (n) => ({ id: n.id, title: n.title });
+const bookOf = (row) => (row.book_id ? { id: row.book_id, title: row.book_title } : null);
+
+const DISCUSSION_FILTER = {
+  active: 'd.status = 1',
+  ended: 'd.status IN (2, 3)',
+  none: 'd.id IS NULL',
+};
 
 function clip(text) {
   const chars = [...text];
@@ -63,7 +72,7 @@ async function applyMoves(conn, userId, moves) {
   }
 }
 
-export async function listNotes(userId, { q, page, pageSize, tag }) {
+export async function listNotes(userId, { q, page, pageSize, tag, book, kind, discussion, since, sort = 'updated' }) {
   const where = ['n.user_id = ?', 'n.status = ?'];
   const params = [userId, ACTIVE];
   if (q) {
@@ -75,9 +84,24 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
     where.push('EXISTS (SELECT 1 FROM note_tag nt WHERE nt.note_id = n.id AND nt.tag_id = ?)');
     params.push(tag);
   }
+  if (book === 'none') where.push('n.book_id IS NULL');
+  else if (book) {
+    where.push('n.book_id = ?');
+    params.push(book);
+  }
+  if (kind) {
+    where.push('n.kind = ?');
+    params.push(kindCode(kind));
+  }
+  if (discussion) where.push(DISCUSSION_FILTER[discussion]);
+  if (since) {
+    where.push('n.updated_at >= ?');
+    params.push(since);
+  }
+  const order = sort === 'created' ? 'n.created_at DESC, n.id DESC' : 'n.updated_at DESC, n.id DESC';
   const [[rows], [countRows], index] = await Promise.all([
     pool.query(
-      `SELECT n.id, n.parent_id, n.title, n.kind,
+      `SELECT n.id, n.parent_id, n.title, n.kind, n.book_id, b.title AS book_title,
               LEFT(n.content_text, ${EXCERPT_LENGTH + 1}) AS content_head,
               LEFT(n.quote, ${EXCERPT_LENGTH * 4}) AS quote_head,
               CHAR_LENGTH(REGEXP_REPLACE(n.content_text, '[[:space:]]+', '')) AS content_length,
@@ -85,12 +109,13 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
               (SELECT COUNT(*) FROM message m WHERE m.discussion_id = d.id) AS message_count
          FROM note n
          LEFT JOIN discussion d ON d.note_id = n.id
+         LEFT JOIN book b ON b.id = n.book_id
         WHERE ${where.join(' AND ')}
-        ORDER BY n.updated_at DESC, n.id DESC
+        ORDER BY ${order}
         LIMIT ? OFFSET ?`,
       [...params, pageSize + 1, (page - 1) * pageSize],
     ),
-    pool.query(`SELECT COUNT(*) AS n FROM note n WHERE ${where.join(' AND ')}`, params),
+    pool.query(`SELECT COUNT(*) AS n FROM note n LEFT JOIN discussion d ON d.note_id = n.id WHERE ${where.join(' AND ')}`, params),
     loadIndex(pool, userId),
   ]);
   const tagMap = await tagsForNotes(rows.slice(0, pageSize).map((r) => r.id));
@@ -102,6 +127,7 @@ export async function listNotes(userId, { q, page, pageSize, tag }) {
         parent_id: row.parent_id,
         title: row.title,
         kind: kindName(row.kind),
+        book: bookOf(row),
         ...excerptOf(row),
         depth: ancestors.length,
         ...(q ? { path: ancestors.map(brief) } : {}),
@@ -137,11 +163,14 @@ export async function listTree(userId) {
 }
 
 async function findOwnRow(userId, id, conn = pool) {
-  const [rows] = await conn.query(`SELECT ${DETAIL_COLUMNS} FROM note WHERE id = ? AND user_id = ? AND status = ?`, [
-    id,
-    userId,
-    ACTIVE,
-  ]);
+  const [rows] = await conn.query(
+    `SELECT ${DETAIL_COLUMNS} FROM note n LEFT JOIN book b ON b.id = n.book_id WHERE n.id = ? AND n.user_id = ? AND n.status = ?`,
+    [
+      id,
+      userId,
+      ACTIVE,
+    ],
+  );
   return rows[0] ?? null;
 }
 
@@ -156,6 +185,7 @@ export async function getNote(userId, id) {
     quote: row.quote,
     content: row.content,
     kind: kindName(row.kind),
+    book: bookOf(row),
     tags,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -179,36 +209,56 @@ export async function captureSnapshot(conn, userId, id) {
   return { note: chain.pop(), ancestors: chain };
 }
 
-async function insertNote(conn, userId, { parent_id, sort_order }, { title, quote, content, kind }) {
+async function insertNote(conn, userId, { parent_id, sort_order }, { title, quote, content, kind }, bookId) {
   const [result] = await conn.query(
-    'INSERT INTO note (user_id, parent_id, sort_order, title, quote, content, content_text, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [userId, parent_id, sort_order, title, quote, content, markdownToText(content), kindCode(kind)],
+    'INSERT INTO note (user_id, parent_id, sort_order, title, quote, content, content_text, kind, book_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [userId, parent_id, sort_order, title, quote, content, markdownToText(content), kindCode(kind), bookId],
   );
   return result.insertId;
+}
+
+async function bookIdOf(conn, noteId) {
+  const [rows] = await conn.query('SELECT book_id FROM note WHERE id = ?', [noteId]);
+  return rows[0]?.book_id ?? null;
+}
+
+// 显式指定的书须属于本人；未指定时沿用 fallback（父笔记或原笔记的书）
+async function resolveBookId(conn, userId, requested, fallback) {
+  if (requested === undefined) return fallback();
+  if (requested !== null && !(await findBook(userId, requested, conn))) throw bookNotFound();
+  return requested;
 }
 
 // parentId 非空即「向下补充」：成为该笔记的最后一个子级
 export async function createNote(userId, input, parentId = null) {
   const id = await withTransaction(async (conn) => {
     const index = await lockAuthorAndLoad(conn, userId);
-    return insertNote(conn, userId, planCreate(index, parentId), input);
+    const plan = planCreate(index, parentId);
+    const bookId = await resolveBookId(conn, userId, input.book_id, () => (parentId ? bookIdOf(conn, parentId) : null));
+    return insertNote(conn, userId, plan, input, bookId);
   });
   return getNote(userId, id);
 }
 
-export async function updateNote(userId, id, { title, quote, content, kind }) {
+export async function updateNote(userId, id, { title, quote, content, kind, book_id }) {
   const current = await findOwnRow(userId, id);
   if (!current) throw noteNotFound();
   const code = kindCode(kind);
-  if (current.title === title && current.quote === quote && current.content === content && current.kind === code) {
+  const bookId = await resolveBookId(pool, userId, book_id, () => current.book_id);
+  const contentSame = current.title === title && current.quote === quote && current.content === content && current.kind === code;
+  if (contentSame) {
+    // 只换书属于归属调整，不刷新 updated_at
+    if (bookId !== current.book_id) {
+      await pool.query('UPDATE note SET book_id = ? WHERE id = ? AND user_id = ? AND status = ?', [bookId, id, userId, ACTIVE]);
+    }
     return getNote(userId, id);
   }
 
   // 只改内容，不动 parent_id / sort_order（编辑不变位）
   const [result] = await pool.query(
-    `UPDATE note SET title = ?, quote = ?, content = ?, content_text = ?, kind = ?, updated_at = CURRENT_TIMESTAMP(3)
+    `UPDATE note SET title = ?, quote = ?, content = ?, content_text = ?, kind = ?, book_id = ?, updated_at = CURRENT_TIMESTAMP(3)
       WHERE id = ? AND user_id = ? AND status = ?`,
-    [title, quote, content, markdownToText(content), code, id, userId, ACTIVE],
+    [title, quote, content, markdownToText(content), code, bookId, id, userId, ACTIVE],
   );
   if (result.affectedRows === 0) throw noteNotFound();
   return getNote(userId, id);
@@ -219,7 +269,8 @@ export async function promoteNote(userId, sourceId, input) {
     const index = await lockAuthorAndLoad(conn, userId);
     if (!index.byId.has(sourceId)) throw noteNotFound();
     const plan = planPromote(index, sourceId);
-    const newId = await insertNote(conn, userId, plan.insert, input);
+    const bookId = await resolveBookId(conn, userId, input.book_id, () => bookIdOf(conn, sourceId));
+    const newId = await insertNote(conn, userId, plan.insert, input, bookId);
     await applyMoves(conn, userId, [{ id: sourceId, parent_id: newId, sort_order: plan.source.sort_order }]);
     return newId;
   });

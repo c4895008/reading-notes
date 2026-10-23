@@ -9,7 +9,7 @@ if (config.db.database !== 'reading_notes_test') {
 const { pool } = await import('../src/db/pool.js');
 const { createApp } = await import('../src/app.js');
 
-const TABLES = ['user_badge', 'message', 'discussion_participant', 'discussion', 'friendship', 'note_tag', 'tag', 'note', 'user'];
+const TABLES = ['user_badge', 'message', 'discussion_participant', 'discussion', 'friendship', 'note_tag', 'tag', 'note', 'book', 'user'];
 export const PASSWORD = 'int-pass-1234';
 
 let server;

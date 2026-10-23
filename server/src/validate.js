@@ -87,8 +87,56 @@ export function parseNoteInput(body) {
     }
   }
 
+  // undefined：不改动（更新）/ 继承父笔记（新建）；null：未归类
+  let bookId;
+  if (body.book_id !== undefined) {
+    if (body.book_id === null || (Number.isSafeInteger(body.book_id) && body.book_id > 0)) bookId = body.book_id;
+    else errors.book_id = '书籍不正确';
+  }
+
   assertValid(errors);
-  return { title, quote, content, kind };
+  return { title, quote, content, kind, ...(bookId !== undefined ? { book_id: bookId } : {}) };
+}
+
+export const BOOK_LIMITS = { title: 80, author: 60 };
+export const BOOK_STATUSES = ['reading', 'deep', 'done'];
+
+export function checkBookTitle(value) {
+  if (typeof value !== 'string' || !value.trim()) return '请填写书名';
+  const title = value.trim();
+  if (charLength(title) > BOOK_LIMITS.title) return `书名最多 ${BOOK_LIMITS.title} 字`;
+  if (CONTROL_RE.test(title)) return '书名包含不支持的字符';
+  return null;
+}
+
+export function checkBookAuthor(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string') return '作者格式不正确';
+  const author = value.trim();
+  if (charLength(author) > BOOK_LIMITS.author) return `作者最多 ${BOOK_LIMITS.author} 字`;
+  if (CONTROL_RE.test(author)) return '作者包含不支持的字符';
+  return null;
+}
+
+// partial：PATCH 时未出现的字段保持 undefined
+export function parseBookInput(body, { partial = false } = {}) {
+  const errors = {};
+  const out = {};
+  if (!partial || body.title !== undefined) {
+    errors.title = checkBookTitle(body.title);
+    if (!errors.title) out.title = body.title.trim();
+  }
+  if (body.author !== undefined) {
+    errors.author = checkBookAuthor(body.author);
+    if (!errors.author) out.author = typeof body.author === 'string' ? body.author.trim() || null : null;
+  }
+  if (body.status !== undefined) {
+    if (body.status === null || BOOK_STATUSES.includes(body.status)) out.status = body.status;
+    else errors.status = '阅读状态不正确';
+  }
+  assertValid(errors);
+  if (partial && !Object.keys(out).length) throw validationError({ title: '没有需要修改的内容' });
+  return out;
 }
 
 export const TAG_NAME_MAX = 40;

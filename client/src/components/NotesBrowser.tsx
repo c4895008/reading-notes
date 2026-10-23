@@ -1,19 +1,41 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { listNotes, listTree, type NoteRef, type NoteSummary, type TreeItem } from '../api/notes';
+import { BOOKS_CHANGED, listBooks, setNotesBook, type Book } from '../api/books';
+import { listNotes, listTree, type DiscussionFilter, type NoteKind, type NoteRef, type NoteSummary, type TreeItem } from '../api/notes';
 import { listTags, TAGS_CHANGED, type Tag } from '../api/tags';
 import { useAuth } from '../auth/AuthContext';
-import { fullTime, isoDate } from '../lib/time';
+import { fullTime, isoDate, weekStartIso } from '../lib/time';
 import { loadCollapsed, loadLastViewed, saveCollapsed, type NotesView } from '../lib/treeState';
-import { BackIcon, CheckCircleIcon, ChevronIcon, CommentIcon, ListIcon, PlusIcon, SearchIcon, TextIcon, TreeIcon } from './Icons';
+import BookSwitcher, { type BookScopeValue } from './BookSwitcher';
+import {
+  BackIcon,
+  BookIcon,
+  CheckCircleIcon,
+  ChecklistIcon,
+  ChevronIcon,
+  CommentIcon,
+  ListIcon,
+  PlusIcon,
+  SearchIcon,
+  TextIcon,
+  TreeIcon,
+} from './Icons';
+import NoteFilters, { type FilterPatch, type FilterValue } from './NoteFilters';
 import { KindBadge } from './NoteKind';
 import NoteTreeView, { TREE_COLLAPSE_OVER } from './NoteTree';
+import { useToast } from './Toast';
 import './NotesBrowser.css';
 import '../pages/Notes.css';
 
 const DEBOUNCE_MS = 250;
 const ID_RE = /^[1-9]\d*$/;
+const KINDS: NoteKind[] = ['viewpoint', 'question', 'summary'];
+const DISCUSSIONS: DiscussionFilter[] = ['active', 'ended', 'none'];
+// 切换视图或改动任一筛选时一并清理的参数
+const FILTER_KEYS = ['q', 'tag', 'book', 'kind', 'discussion', 'since', 'sort'];
+
+type BookList = { items: Book[]; unfiled: number } | null;
 
 function useMedia(query: string) {
   const [match, setMatch] = useState(() => window.matchMedia(query).matches);
@@ -125,6 +147,27 @@ function EmptyNotes() {
   );
 }
 
+function BookScope({ scope, books, allCount, onOpen }: { scope: BookScopeValue; books: BookList; allCount: number | null; onOpen: () => void }) {
+  const book = typeof scope === 'number' ? books?.items.find((b) => b.id === scope) : undefined;
+  const title = scope === 'none' ? '未归类' : scope === null ? '全部书籍' : book ? `《${book.title}》` : '…';
+  const count = scope === 'none' ? books?.unfiled : scope === null ? allCount : book?.note_count;
+  return (
+    <button type="button" className={`nb-scope${scope !== null ? ' is-set' : ''}`} aria-haspopup="dialog" onClick={onOpen}>
+      <span className="nb-scope-tile" aria-hidden="true">
+        <BookIcon size={20} />
+      </span>
+      <span className="nb-scope-text">
+        <span className="nb-scope-caption">当前阅读书架</span>
+        <span className="nb-scope-title">{title}</span>
+      </span>
+      {count != null && <span className="nb-scope-count">{count} 条</span>}
+      <span className="nb-scope-chevron" aria-hidden="true">
+        <ChevronIcon size={16} />
+      </span>
+    </button>
+  );
+}
+
 type ListState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
@@ -153,9 +196,20 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
   const q = params.get('q')?.trim() ?? '';
   const tagParam = params.get('tag');
   const tagId = tagParam && ID_RE.test(tagParam) ? Number(tagParam) : null;
+  const bookParam = params.get('book');
+  const bookScope: BookScopeValue = bookParam === 'none' ? 'none' : bookParam && ID_RE.test(bookParam) ? Number(bookParam) : null;
+  const kindParam = params.get('kind') as NoteKind | null;
+  const kind = kindParam && KINDS.includes(kindParam) ? kindParam : null;
+  const discussionParam = params.get('discussion') as DiscussionFilter | null;
+  const discussion = discussionParam && DISCUSSIONS.includes(discussionParam) ? discussionParam : null;
+  const weekOnly = params.get('since') === 'week';
+  const sort = params.get('sort') === 'created' ? 'created' : 'updated';
+  const filters: FilterValue = { kind, discussion, weekOnly, sort };
   const pageParam = params.get('page');
   const page = pageParam && ID_RE.test(pageParam) ? Number(pageParam) : 1;
-  const view: NotesView = params.get('view') === 'tree' && !q && tagId === null ? 'tree' : 'list';
+  const filtered = !!q || tagId !== null || bookScope !== null || !!kind || !!discussion || weekOnly || sort !== 'updated';
+  const view: NotesView = params.get('view') === 'tree' && !filtered ? 'tree' : 'list';
+  const show = useToast();
 
   const [input, setInput] = useState(q);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -163,6 +217,11 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
   const [allCount, setAllCount] = useState<number | null>(null);
   const [reload, setReload] = useState(0);
   const [state, setState] = useState<ListState>({ status: 'loading' });
+  const [books, setBooks] = useState<BookList>(null);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [batch, setBatch] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(() => new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
   const currentRef = useRef<HTMLAnchorElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrolled = useRef(false);
@@ -204,6 +263,32 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
   }, []);
 
   useEffect(() => {
+    let ctrl: AbortController | null = null;
+    const refresh = () => {
+      ctrl?.abort();
+      const next = new AbortController();
+      ctrl = next;
+      listBooks(next.signal)
+        .then((d) => {
+          if (!next.signal.aborted) setBooks({ items: d.items, unfiled: d.unfiled_count });
+        })
+        .catch(() => {});
+    };
+    const onBooksChanged = (event: Event) => {
+      refresh();
+      setReload((n) => n + 1);
+      const deletedId = (event as CustomEvent<{ deletedId?: number }>).detail?.deletedId;
+      if (deletedId !== undefined) setParams((prev) => dropBook(prev, deletedId), { replace: true });
+    };
+    refresh();
+    window.addEventListener(BOOKS_CHANGED, onBooksChanged);
+    return () => {
+      window.removeEventListener(BOOKS_CHANGED, onBooksChanged);
+      ctrl?.abort();
+    };
+  }, [setParams]);
+
+  useEffect(() => {
     const onTagsChanged = (event: Event) => {
       const deletedId = (event as CustomEvent<{ deletedId?: number }>).detail?.deletedId;
       if (deletedId !== tagId) return;
@@ -220,17 +305,36 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
     if (view !== 'list') return;
     const ctrl = new AbortController();
     setState((s) => (s.status === 'error' ? { status: 'loading' } : s));
-    listNotes({ q, tag: tagId ?? undefined, page }, ctrl.signal)
+    listNotes(
+      {
+        q,
+        tag: tagId ?? undefined,
+        book: bookScope ?? undefined,
+        kind: kind ?? undefined,
+        discussion: discussion ?? undefined,
+        since: weekOnly ? weekStartIso() : undefined,
+        sort,
+        page,
+      },
+      ctrl.signal,
+    )
       .then((data) => {
         if (ctrl.signal.aborted) return;
-        if (!q && tagId === null && page === 1) setAllCount(data.total);
+        if (!filtered && page === 1) setAllCount(data.total);
         setState({ status: 'ready', items: data.items, total: data.total, pageSize: data.page_size, hasMore: data.has_more });
       })
       .catch((e: ApiError) => {
-        if (!ctrl.signal.aborted) setState({ status: 'error', message: e.message });
+        if (ctrl.signal.aborted) return;
+        if (e.code === 'BOOK_NOT_FOUND') setParams((prev) => dropBook(prev, bookScope), { replace: true });
+        else setState({ status: 'error', message: e.message });
       });
     return () => ctrl.abort();
-  }, [q, tagId, page, view, reload]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, tagId, bookScope, kind, discussion, weekOnly, sort, page, view, reload]);
+
+  useEffect(() => {
+    setSelected(new Set());
+  }, [q, tagId, bookScope, kind, discussion, weekOnly, sort, page, reload]);
 
   useEffect(() => {
     scrolled.current = false;
@@ -273,13 +377,64 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
     const merged = new URLSearchParams(params);
     if (next === 'tree') {
       merged.set('view', 'tree');
-      merged.delete('q');
-      merged.delete('tag');
+      for (const key of FILTER_KEYS) merged.delete(key);
       merged.delete('page');
+      setBatch(false);
     } else {
       merged.delete('view');
     }
     setParams(merged, { replace: true });
+  }
+
+  function patchParams(patch: FilterPatch & { book?: string | null }) {
+    const merged = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null || value === undefined) merged.delete(key);
+      else merged.set(key, value);
+    }
+    merged.delete('page');
+    merged.delete('view');
+    setParams(merged, { replace: true });
+  }
+
+  function chooseBook(scope: BookScopeValue) {
+    setSwitcherOpen(false);
+    patchParams({ book: scope === null ? null : String(scope) });
+  }
+
+  function toggleBatch() {
+    if (batch) {
+      setBatch(false);
+      return;
+    }
+    if (view === 'tree') chooseView('list');
+    setBatch(true);
+  }
+
+  function toggleSelect(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function assignBook(value: string) {
+    if (!selected.size || batchBusy) return;
+    const bookId = value === 'none' ? null : Number(value);
+    const ids = [...selected];
+    setBatchBusy(true);
+    try {
+      await setNotesBook(ids, bookId);
+      const name = bookId === null ? '未归类' : `《${books?.items.find((b) => b.id === bookId)?.title ?? ''}》`;
+      show(`已将 ${ids.length} 条笔记归入${name}`);
+      setSelected(new Set());
+    } catch (e) {
+      show((e as Error).message);
+    } finally {
+      setBatchBusy(false);
+    }
   }
 
   function setPage(next: number) {
@@ -294,7 +449,7 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
   const hasMore = state.status === 'ready' ? state.hasMore : false;
   const pageSize = state.status === 'ready' ? state.pageSize : 10;
   const pages = total !== null ? Math.max(1, Math.ceil(total / pageSize)) : hasMore ? page + 1 : page;
-  const headCount = view === 'tree' ? allCount : tagId === null && !q ? (total ?? allCount) : total;
+  const headCount = view === 'tree' ? allCount : filtered ? total : (total ?? allCount);
 
   return (
     <div className="nb" ref={topRef}>
@@ -305,33 +460,33 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
             {headCount !== null && <span className="nb-count">{headCount}</span>}
           </div>
           <div className="nb-tools">
-            <Link to="/notes/new" state={{ back }} className="icon-btn" aria-label="写笔记" title="写笔记">
+            <Link to="/notes/new" state={{ back }} className="icon-btn nb-tool" aria-label="写笔记" title="写笔记">
               <PlusIcon size={16} />
             </Link>
-            <div className="nb-view" role="group" aria-label="切换视图">
-              <button
-                type="button"
-                className={view === 'list' ? 'is-active' : ''}
-                aria-pressed={view === 'list'}
-                aria-label="列表视图"
-                title="列表视图"
-                onClick={() => chooseView('list')}
-              >
-                <ListIcon size={16} />
-              </button>
-              <button
-                type="button"
-                className={view === 'tree' ? 'is-active' : ''}
-                aria-pressed={view === 'tree'}
-                aria-label="结构视图"
-                title="结构视图"
-                onClick={() => chooseView('tree')}
-              >
-                <TreeIcon size={16} />
-              </button>
-            </div>
+            <button
+              type="button"
+              className="icon-btn nb-tool"
+              aria-label={view === 'tree' ? '切换到列表视图' : '切换到结构视图'}
+              title={view === 'tree' ? '列表视图' : filtered ? '结构视图（将清除筛选）' : '结构视图'}
+              onClick={() => chooseView(view === 'tree' ? 'list' : 'tree')}
+            >
+              {view === 'tree' ? <ListIcon size={16} /> : <TreeIcon size={16} />}
+            </button>
+            <NoteFilters value={filters} onChange={patchParams} />
+            <button
+              type="button"
+              className={`icon-btn nb-tool${batch ? ' is-on' : ''}`}
+              aria-pressed={batch}
+              aria-label="批量归书"
+              title="批量归书"
+              onClick={toggleBatch}
+            >
+              <ChecklistIcon size={16} />
+            </button>
           </div>
         </div>
+
+        <BookScope scope={bookScope} books={books} allCount={allCount} onOpen={() => setSwitcherOpen(true)} />
 
         <label className="nb-search">
           <SearchIcon size={17} />
@@ -366,10 +521,58 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
       </div>
 
       <div className="nb-scroll" ref={scrollRef}>
-        {view === 'list' && <ListPane state={state} q={q} tagId={tagId} back={back} currentId={currentId} currentRef={currentRef} onRetry={() => setReload((n) => n + 1)} />}
+        {view === 'list' && (
+          <ListPane
+            state={state}
+            q={q}
+            filtered={filtered}
+            back={back}
+            currentId={currentId}
+            currentRef={currentRef}
+            showBook={bookScope === null}
+            selected={batch ? selected : null}
+            onToggle={toggleSelect}
+            onRetry={() => setReload((n) => n + 1)}
+          />
+        )}
 
         {view === 'tree' && <TreePane userId={userId} back={back} currentId={currentId} onCount={setAllCount} />}
       </div>
+
+      {view === 'list' && batch && (
+        <div className="nb-batch" role="region" aria-label="批量归书">
+          <label className="nb-batch-all">
+            <input
+              type="checkbox"
+              checked={state.status === 'ready' && state.items.length > 0 && state.items.every((n) => selected.has(n.id))}
+              disabled={state.status !== 'ready' || state.items.length === 0}
+              onChange={(e) => setSelected(e.target.checked && state.status === 'ready' ? new Set(state.items.map((n) => n.id)) : new Set())}
+            />
+            全选本页
+          </label>
+          <span className="nb-batch-count">已选 {selected.size} 条</span>
+          <select
+            className="nb-batch-select"
+            value=""
+            aria-label="归入书籍"
+            disabled={!selected.size || batchBusy}
+            onChange={(e) => assignBook(e.target.value)}
+          >
+            <option value="" disabled>
+              {batchBusy ? '处理中…' : '归入…'}
+            </option>
+            {books?.items.map((b) => (
+              <option key={b.id} value={b.id}>
+                《{b.title}》
+              </option>
+            ))}
+            <option value="none">未归类</option>
+          </select>
+          <button type="button" className="nb-batch-cancel" onClick={() => setBatch(false)}>
+            取消
+          </button>
+        </div>
+      )}
 
       {view === 'list' && state.status === 'ready' && (pages > 1 || total !== null) && (
         <nav className="nb-pagination" aria-label="笔记分页">
@@ -407,25 +610,50 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
           {total !== null && <span className="nb-total">共 {total} 条记录</span>}
         </nav>
       )}
+
+      <BookSwitcher
+        open={switcherOpen}
+        books={books?.items ?? null}
+        unfiledCount={books?.unfiled ?? 0}
+        current={bookScope}
+        weekOnly={weekOnly}
+        onPick={chooseBook}
+        onToggleWeek={() => patchParams({ since: weekOnly ? null : 'week' })}
+        onClose={() => setSwitcherOpen(false)}
+      />
     </div>
   );
+}
+
+function dropBook(prev: URLSearchParams, id: BookScopeValue) {
+  if (id === null || prev.get('book') !== String(id)) return prev;
+  const next = new URLSearchParams(prev);
+  next.delete('book');
+  next.delete('page');
+  return next;
 }
 
 function ListPane({
   state,
   q,
-  tagId,
+  filtered,
   back,
   currentId,
   currentRef,
+  showBook,
+  selected,
+  onToggle,
   onRetry,
 }: {
   state: ListState;
   q: string;
-  tagId: number | null;
+  filtered: boolean;
   back: string;
   currentId: number | null;
   currentRef: React.MutableRefObject<HTMLAnchorElement | null>;
+  showBook: boolean;
+  selected: Set<number> | null;
+  onToggle: (id: number) => void;
   onRetry: () => void;
 }) {
   if (state.status === 'loading') return <SkeletonList />;
@@ -440,25 +668,20 @@ function ListPane({
     );
   }
   if (state.items.length === 0) {
-    if (tagId !== null) return <div className="notes-state"><p>这个标签下还没有笔记。</p></div>;
     if (q) return <div className="notes-state"><p>{`没有找到包含「${q}」的笔记。搜索范围：你的笔记标题、引文与正文。`}</p></div>;
+    if (filtered) return <div className="notes-state"><p>当前筛选条件下还没有笔记。</p></div>;
     return <EmptyNotes />;
   }
   return (
-    <ul className="note-list">
-      {state.items.map((note) => (
-        <li key={note.id}>
-          <Link
-            to={`/notes/${note.id}`}
-            state={{ back }}
-            ref={note.id === currentId ? currentRef : undefined}
-            aria-current={note.id === currentId ? 'page' : undefined}
-            className="note-item"
-          >
+    <ul className={`note-list${selected ? ' is-batch' : ''}`}>
+      {state.items.map((note) => {
+        const body = (
+          <>
             <span className="note-title">{note.title}</span>
             <span className="note-meta">
               <KindBadge kind={note.kind} />
               {note.depth > 0 && <span className="note-depth">第 {note.depth + 1} 层</span>}
+              {showBook && note.book && <span className="note-book">《{note.book.title}》</span>}
               <time dateTime={note.updated_at} title={`最近更新 ${fullTime(note.updated_at)}`}>
                 {isoDate(note.updated_at)}
               </time>
@@ -466,9 +689,33 @@ function ListPane({
             {note.path && <NotePath path={note.path} />}
             <Excerpt note={note} />
             <NoteFoot note={note} />
-          </Link>
-        </li>
-      ))}
+          </>
+        );
+        if (selected) {
+          const checked = selected.has(note.id);
+          return (
+            <li key={note.id}>
+              <label className={`note-item is-selectable${checked ? ' is-checked' : ''}`}>
+                <input type="checkbox" className="note-check" checked={checked} onChange={() => onToggle(note.id)} />
+                {body}
+              </label>
+            </li>
+          );
+        }
+        return (
+          <li key={note.id}>
+            <Link
+              to={`/notes/${note.id}`}
+              state={{ back }}
+              ref={note.id === currentId ? currentRef : undefined}
+              aria-current={note.id === currentId ? 'page' : undefined}
+              className="note-item"
+            >
+              {body}
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }

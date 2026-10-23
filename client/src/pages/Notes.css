@@ -568,6 +568,13 @@ a.note-item:hover {
   flex-direction: column;
 }
 
+.editor-attrs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 28px;
+}
+
 .editor-title {
   width: 100%;
   padding: 8px 0;
@@ -956,6 +963,21 @@ a.note-item:hover {
   color: var(--ink-soft);
   font-size: var(--text-aux);
   font-weight: 600;
+}
+
+.reading-book {
+  min-width: 0;
+  overflow: hidden;
+  color: #285ab0;
+  font-size: var(--text-aux);
+  font-weight: 600;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reading-book:hover {
+  text-decoration: underline;
 }
 
 .reading-context {

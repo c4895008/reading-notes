@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import Settings from './pages/Settings';
 import Talk from './pages/Talk';
 import Talks from './pages/Talks';
+import BooksPage from './pages/BooksPage';
 import TagsPage from './pages/TagsPage';
 
 // 数据路由：useBlocker（未保存离开确认）只在此模式下可用
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
           { path: 'notes/:id', element: <NoteView /> },
           { path: 'notes/:id/edit', element: <NoteEditor key="edit" /> },
           { path: 'tags', element: <TagsPage /> },
+          { path: 'books', element: <BooksPage /> },
           { path: 'talks', element: <Talks /> },
           { path: 'talks/:id', element: <Talk /> },
           { path: 'friends', element: <Friends /> },
