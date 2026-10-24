@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { STATUS_LABEL, type InviteResult, type TalkSummary } from '../api/discussions';
+import { type InviteResult } from '../api/discussions';
 import { deleteNote, getNote, listTree, moveNote, type Note, type NoteRef, type TreeItem } from '../api/notes';
 import { TAGS_CHANGED, type NoteTag } from '../api/tags';
 import { useAuth } from '../auth/AuthContext';
-import AvatarGroup from '../components/AvatarGroup';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useExplorerContent } from '../components/Explorer';
-import { BackIcon, MountIcon, PenIcon, RefineIcon, SupplementIcon, TalkIcon, TrashIcon, UnmountIcon } from '../components/Icons';
+import { BackIcon, MountIcon, PenIcon, RefineIcon, SupplementIcon, TrashIcon, UnmountIcon } from '../components/Icons';
 import { NoteBody, QuoteBlock } from '../components/NoteContent';
 import { KindBadge } from '../components/NoteKind';
 import NotesExplorer from '../components/NotesExplorer';
+import NoteTalkPanel from '../components/NoteTalkPanel';
 import NoteThread from '../components/NoteThread';
 import InviteDialog, { type InviteTarget } from '../components/InviteDialog';
 import NotePicker from '../components/NotePicker';
@@ -83,48 +83,6 @@ function TimeMeta({ note }: { note: Note }) {
         </>
       )}
     </p>
-  );
-}
-
-function TalkSection({ talk, here, onStart, onInvite }: { talk: TalkSummary | null; here: string; onStart: () => void; onInvite: () => void }) {
-  return (
-    <section className="reading-section" aria-labelledby="talk-title">
-      <h2 id="talk-title" className="reading-section-title">
-        这条笔记的讨论
-      </h2>
-      {talk ? (
-        <div className="note-talk">
-          <Link to={`/talks/${talk.id}`} state={{ back: here }} className="note-talk-card">
-            <AvatarGroup users={talk.participants} max={4} size={32} />
-            <span className="note-talk-main">
-              <span className="note-talk-open">
-                <TalkIcon size={18} />
-                打开讨论
-              </span>
-              <span className="note-talk-meta">
-                {talk.participants.length} 位参与者 ·{' '}
-                {talk.last_message_at ? `最近发言 ${formatTime(talk.last_message_at)}` : `${formatTime(talk.created_at)} 发起，尚无发言`}
-                {talk.unread > 0 && <strong className="note-talk-unread"> · {talk.unread} 条未读</strong>}
-              </span>
-            </span>
-            {talk.status !== 'active' && <span className="talk-tag">{STATUS_LABEL[talk.status]}</span>}
-          </Link>
-          {talk.status === 'active' && (
-            <button type="button" className="text-btn" onClick={onInvite}>
-              邀请更多读友
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="note-talk-empty">
-          <p>还没有就这条笔记聊过。邀请读友，把想法聊透。</p>
-          <button type="button" className="btn btn-ghost" onClick={onStart}>
-            <TalkIcon size={18} />
-            发起讨论
-          </button>
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -317,129 +275,140 @@ export default function NoteView() {
 
   return (
     <div className="page page-enter reading">
-      <div className="reading-bar">
-        <nav className="reading-location" aria-label="笔记路径">
-          <Link to={back} className="back-link">
-            <BackIcon />
-            笔记
-          </Link>
-          {note && (
-            <>
-              <span className="reading-location-divider" aria-hidden="true">/</span>
-              <span className="reading-location-current" aria-current="page" title={note.title}>{note.title}</span>
-            </>
-          )}
-        </nav>
+      <div className="reading-workspace">
+        <div className="reading-document">
+          <div className="reading-bar">
+            <nav className="reading-location" aria-label="笔记路径">
+              <Link to={back} className="back-link">
+                <BackIcon />
+                笔记
+              </Link>
+              {note && (
+                <>
+                  <span className="reading-location-divider" aria-hidden="true">/</span>
+                  <span className="reading-location-current" aria-current="page" title={note.title}>{note.title}</span>
+                </>
+              )}
+            </nav>
+            {note && (
+              <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }} className="btn btn-ghost">
+                <PenIcon />
+                编辑
+              </Link>
+            )}
+          </div>
+
+          <div className="reading-canvas">
+            {state.status === 'loading' && <ReadingSkeleton />}
+
+            {state.status === 'error' && (
+              <div className="notes-state" role="alert">
+                <p>{state.message}</p>
+                <button type="button" className="btn btn-ghost" onClick={() => setReload((n) => n + 1)}>
+                  重试
+                </button>
+              </div>
+            )}
+
+            {note && (
+              <>
+                {(note.ancestors.length > 0 || childCount > 0) && (
+                  <NoteThread
+                    ancestors={note.ancestors}
+                    current={{ id: note.id, title: note.title }}
+                    tree={thread ?? []}
+                    back={back}
+                    cap={cap}
+                  />
+                )}
+                <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
+                  <header className="reading-head">
+                    <div className="reading-topmeta">
+                      <KindBadge kind={note.kind} />
+                      {note.book && (
+                        <Link to={`/notes?book=${note.book.id}`} className="reading-book" title="查看这本书的全部笔记">
+                          《{note.book.title}》
+                        </Link>
+                      )}
+                      <span className="reading-depth">{note.ancestors.length === 0 ? '顶层笔记' : `第 ${note.ancestors.length + 1} 层`}</span>
+                      {childCount > 0 && <span className="reading-children">{childCount} 条子笔记</span>}
+                      <TimeMeta note={note} />
+                    </div>
+                    <h1 className="reading-title">{note.title}</h1>
+                  </header>
+                  <TagEditor
+                    noteId={note.id}
+                    tags={note.tags}
+                    onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
+                  />
+                  {note.quote && <QuoteBlock text={note.quote} />}
+                  {note.content ? (
+                    <NoteBody source={note.content} />
+                  ) : (
+                    <p className="reading-empty">
+                      还没有写下想法。
+                      <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }}>
+                        补上几句
+                      </Link>
+                    </p>
+                  )}
+                </article>
+
+                <section className="reading-grow" aria-labelledby="grow-title">
+                  <h2 id="grow-title" className="reading-section-title">继续生长</h2>
+                  <p className="context-hint">{childCount > 0 ? `已有 ${childCount} 条下层笔记，继续连接新的想法。` : '连接更抽象的理解，或补充具体的线索。'}</p>
+                  <div className="grow">
+                    <button type="button" className="grow-card" onClick={startRefine}>
+                      <RefineIcon />
+                      <span className="grow-verb">向上提炼</span>
+                      <span className="grow-desc">写下更抽象的理解</span>
+                    </button>
+                    <Link to={`/notes/new?under=${note.id}`} state={{ back }} className="grow-card">
+                      <SupplementIcon />
+                      <span className="grow-verb">向下补充</span>
+                      <span className="grow-desc">补充更具体的线索</span>
+                    </Link>
+                  </div>
+                  <div className="reading-actions">
+                    <button type="button" className="text-btn" onClick={() => setPicking(true)}>
+                      <MountIcon />
+                      {note.parent_id ? '更换父笔记' : '挂载父笔记'}
+                    </button>
+                    {note.parent_id && (
+                      <button type="button" className="text-btn" onClick={() => setConfirm({ kind: 'unmount' })}>
+                        <UnmountIcon />
+                        解除父级
+                      </button>
+                    )}
+                  </div>
+                </section>
+
+                <details className="reading-management">
+                  <summary>笔记管理</summary>
+                  <button type="button" className="text-btn is-danger" onClick={() => setConfirm({ kind: 'delete' })}>
+                    <TrashIcon />
+                    删除这条笔记
+                  </button>
+                </details>
+              </>
+            )}
+          </div>
+        </div>
+
         {note && (
-          <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }} className="btn btn-ghost">
-            <PenIcon />
-            编辑
-          </Link>
+          <aside className="reading-context" aria-label="读友讨论">
+            <NoteTalkPanel
+              talk={note.discussion ?? null}
+              here={location.pathname}
+              onStart={() => setInviting(true)}
+              onInvite={() => setInviting(true)}
+            />
+          </aside>
         )}
       </div>
 
-      {state.status === 'loading' && <ReadingSkeleton />}
-
-      {state.status === 'error' && (
-        <div className="notes-state" role="alert">
-          <p>{state.message}</p>
-          <button type="button" className="btn btn-ghost" onClick={() => setReload((n) => n + 1)}>
-            重试
-          </button>
-        </div>
-      )}
-
       {note && (
         <>
-          <div className="reading-workspace">
-            <div className="reading-document">
-              {(note.ancestors.length > 0 || childCount > 0) && (
-                <NoteThread
-                  ancestors={note.ancestors}
-                  current={{ id: note.id, title: note.title }}
-                  tree={thread ?? []}
-                  back={back}
-                  cap={cap}
-                />
-              )}
-              <article className={`reading-card${fresh ? ' is-fresh' : ''}`}>
-                <div className="reading-topmeta">
-                  <KindBadge kind={note.kind} />
-                  <span className="reading-depth">{note.ancestors.length === 0 ? '顶层笔记' : `第 ${note.ancestors.length + 1} 层笔记`}</span>
-                  {note.book && (
-                    <Link to={`/notes?book=${note.book.id}`} className="reading-book" title="查看这本书的全部笔记">
-                      《{note.book.title}》
-                    </Link>
-                  )}
-                  <TimeMeta note={note} />
-                </div>
-                <h1 className="reading-title">{note.title}</h1>
-                <TagEditor
-                  noteId={note.id}
-                  tags={note.tags}
-                  onChange={(tags) => setState((s) => (s.status === 'ready' ? { status: 'ready', note: { ...s.note, tags } } : s))}
-                />
-                {note.quote && <QuoteBlock text={note.quote} />}
-                {note.content ? (
-                  <NoteBody source={note.content} />
-                ) : (
-                  <p className="reading-empty">
-                    还没有写下想法。
-                    <Link to={`/notes/${id}/edit`} state={{ fromView: true, back }}>
-                      补上几句
-                    </Link>
-                  </p>
-                )}
-              </article>
-            </div>
-
-            <aside className="reading-context" aria-label="笔记上下文">
-              <section className="context-card" aria-labelledby="grow-title">
-                <h2 id="grow-title" className="reading-section-title">继续生长</h2>
-                <p className="context-hint">{childCount > 0 ? `已有 ${childCount} 条下层笔记，继续连接新的想法。` : '连接更抽象的理解，或补充具体的线索。'}</p>
-                <div className="grow">
-                  <button type="button" className="grow-card" onClick={startRefine}>
-                    <RefineIcon />
-                    <span className="grow-verb">向上提炼</span>
-                    <span className="grow-desc">写下更抽象的理解</span>
-                  </button>
-                  <Link to={`/notes/new?under=${note.id}`} state={{ back }} className="grow-card">
-                    <SupplementIcon />
-                    <span className="grow-verb">向下补充</span>
-                    <span className="grow-desc">补充更具体的线索</span>
-                  </Link>
-                </div>
-                <div className="reading-actions">
-                  <button type="button" className="text-btn" onClick={() => setPicking(true)}>
-                    <MountIcon />
-                    {note.parent_id ? '更换父笔记' : '挂载父笔记'}
-                  </button>
-                  {note.parent_id && (
-                    <button type="button" className="text-btn" onClick={() => setConfirm({ kind: 'unmount' })}>
-                      <UnmountIcon />
-                      解除父级
-                    </button>
-                  )}
-                </div>
-              </section>
-
-              <TalkSection
-                talk={note.discussion ?? null}
-                here={location.pathname}
-                onStart={() => setInviting(true)}
-                onInvite={() => setInviting(true)}
-              />
-
-              <details className="reading-management">
-                <summary>笔记管理</summary>
-                <button type="button" className="text-btn is-danger" onClick={() => setConfirm({ kind: 'delete' })}>
-                  <TrashIcon />
-                  删除这条笔记
-                </button>
-              </details>
-            </aside>
-          </div>
-
           <NotePicker
             open={picking}
             source={{ id: note.id, title: note.title }}

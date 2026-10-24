@@ -147,7 +147,7 @@
 .badge-tile-sk {
   height: 148px;
   border-radius: var(--radius);
-  background: linear-gradient(90deg, rgba(30, 30, 28, 0.05), rgba(30, 30, 28, 0.09), rgba(30, 30, 28, 0.05));
+  background: linear-gradient(90deg, rgba(var(--tint-rgb), 0.05), rgba(var(--tint-rgb), 0.09), rgba(var(--tint-rgb), 0.05));
   background-size: 200% 100%;
   animation: badge-sk 1.4s ease-in-out infinite;
 }

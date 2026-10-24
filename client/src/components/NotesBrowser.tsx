@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import { fullTime, isoDate, weekStartIso } from '../lib/time';
 import { loadCollapsed, loadLastViewed, saveCollapsed, type NotesView } from '../lib/treeState';
 import BookSwitcher, { type BookScopeValue } from './BookSwitcher';
+import TagSwitcher from './TagSwitcher';
 import {
   BackIcon,
   BookIcon,
@@ -18,8 +19,10 @@ import {
   ListIcon,
   PlusIcon,
   SearchIcon,
+  TagIcon,
   TextIcon,
   TreeIcon,
+  XIcon,
 } from './Icons';
 import NoteFilters, { type FilterPatch, type FilterValue } from './NoteFilters';
 import { KindBadge } from './NoteKind';
@@ -213,12 +216,13 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
 
   const [input, setInput] = useState(q);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [tags, setTags] = useState<Tag[]>([]);
+  const [tags, setTags] = useState<Tag[] | null>(null);
   const [allCount, setAllCount] = useState<number | null>(null);
   const [reload, setReload] = useState(0);
   const [state, setState] = useState<ListState>({ status: 'loading' });
   const [books, setBooks] = useState<BookList>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
   const [batch, setBatch] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
   const [batchBusy, setBatchBusy] = useState(false);
@@ -366,6 +370,7 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
   }
 
   function chooseTag(next: number | null) {
+    setTagsOpen(false);
     const merged = new URLSearchParams(params);
     if (next === null) merged.delete('tag');
     else merged.set('tag', String(next));
@@ -449,6 +454,7 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
   const hasMore = state.status === 'ready' ? state.hasMore : false;
   const pageSize = state.status === 'ready' ? state.pageSize : 10;
   const pages = total !== null ? Math.max(1, Math.ceil(total / pageSize)) : hasMore ? page + 1 : page;
+  const activeTag = tagId !== null ? tags?.find((t) => t.id === tagId) : undefined;
   const headCount = view === 'tree' ? allCount : filtered ? total : (total ?? allCount);
 
   return (
@@ -456,7 +462,7 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
       <div className="nb-header">
         <div className="nb-head">
           <div className="nb-title">
-            <h2 className="nb-heading">{view === 'tree' ? '结构总览' : tagId !== null ? (tags.find((t) => t.id === tagId)?.name ?? '全部笔记') : '全部笔记'}</h2>
+            <h2 className="nb-heading">{view === 'tree' ? '结构总览' : '全部笔记'}</h2>
             {headCount !== null && <span className="nb-count">{headCount}</span>}
           </div>
           <div className="nb-tools">
@@ -475,6 +481,16 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
             <NoteFilters value={filters} onChange={patchParams} />
             <button
               type="button"
+              className={`icon-btn nb-tool${tagId !== null ? ' is-on' : ''}`}
+              aria-haspopup="dialog"
+              aria-label={activeTag ? `标签（当前：${activeTag.name}）` : '标签'}
+              title="标签：筛选与管理"
+              onClick={() => setTagsOpen(true)}
+            >
+              <TagIcon size={16} />
+            </button>
+            <button
+              type="button"
               className={`icon-btn nb-tool${batch ? ' is-on' : ''}`}
               aria-pressed={batch}
               aria-label="批量归书"
@@ -488,6 +504,17 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
 
         <BookScope scope={bookScope} books={books} allCount={allCount} onOpen={() => setSwitcherOpen(true)} />
 
+        {tagId !== null && (
+          <div className="nb-chips">
+            <button type="button" className="nb-chip" aria-label={`取消标签筛选：${activeTag?.name ?? ''}`} onClick={() => chooseTag(null)}>
+              <TagIcon size={13} />
+              {activeTag ? activeTag.name : '…'}
+              {activeTag && <span className="nb-chip-count">{activeTag.note_count}</span>}
+              <XIcon size={12} />
+            </button>
+          </div>
+        )}
+
         <label className="nb-search">
           <SearchIcon size={17} />
           <span className="visually-hidden">搜索笔记</span>
@@ -500,24 +527,6 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
           />
         </label>
 
-        <div className="nb-pills" role="group" aria-label="按标签筛选">
-          <button type="button" className={`nb-pill${tagId === null ? ' is-active' : ''}`} aria-pressed={tagId === null} onClick={() => chooseTag(null)}>
-            #全部
-            {allCount !== null && <span className="nb-pill-count">{allCount}</span>}
-          </button>
-          {tags.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`nb-pill${tagId === t.id ? ' is-active' : ''}`}
-              aria-pressed={tagId === t.id}
-              onClick={() => chooseTag(t.id)}
-            >
-              #{t.name}
-              <span className="nb-pill-count">{t.note_count}</span>
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="nb-scroll" ref={scrollRef}>
@@ -621,6 +630,7 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
         onToggleWeek={() => patchParams({ since: weekOnly ? null : 'week' })}
         onClose={() => setSwitcherOpen(false)}
       />
+      <TagSwitcher open={tagsOpen} tags={tags} current={tagId} onPick={chooseTag} onClose={() => setTagsOpen(false)} />
     </div>
   );
 }

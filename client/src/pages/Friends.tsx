@@ -38,10 +38,10 @@ const appendUnique = <T,>(prev: T[], next: T[], key: (item: T) => number) => {
   return [...prev, ...next.filter((item) => !seen.has(key(item)))];
 };
 
-function Person({ user, meta, children }: { user: PublicUser; meta?: ReactNode; children?: ReactNode }) {
+function Person({ user, meta, size = 32, children }: { user: PublicUser; meta?: ReactNode; size?: 24 | 32 | 40; children?: ReactNode }) {
   return (
     <li className="person">
-      <Avatar avatar={user.avatar} name={user.nickname} size={40} decorative />
+      <Avatar avatar={user.avatar} name={user.nickname} size={size} decorative />
       <div className="person-who">
         <span className="person-name">{user.nickname}</span>
         <span className="person-sub">
@@ -222,7 +222,7 @@ function UserSearch({ version, busy, run }: { version: number; busy: string | nu
             state.items.length ? (
               <ul className="people" aria-label="搜索结果">
                 {state.items.map((u) => (
-                  <Person key={u.user_id} user={u}>
+                  <Person key={u.user_id} user={u} size={24}>
                     <SearchActions user={u} busy={busy} run={run} />
                   </Person>
                 ))}
@@ -336,44 +336,80 @@ export default function Friends() {
   }
 
   return (
-    <section className="page page-enter friends" aria-labelledby="page-title">
-      <h1 id="page-title" className="page-title">
-        读友
-      </h1>
+    <section className="page page-enter pane-page friends" aria-labelledby="page-title">
+      <div className="friends-workspace">
+        <main className="friends-main">
+          <div className="pane-bar">
+            <h1 id="page-title" className="pane-title">
+              读友
+              {lists && <span className="pane-title-count">{totals.friends} 位</span>}
+            </h1>
+          </div>
 
-      <Section id="friends-add" title="添加读友">
-        <UserSearch version={searchVersion} busy={busy} run={run} />
-      </Section>
+          <div className="friends-main-body">
+            {loadError && !lists && (
+              <div className="notes-state" role="alert">
+                <p>{loadError}</p>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setLoadError(null);
+                    load();
+                  }}
+                >
+                  重试
+                </button>
+              </div>
+            )}
 
-      {loadError && !lists && (
-        <div className="notes-state" role="alert">
-          <p>{loadError}</p>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => {
-              setLoadError(null);
-              load();
-            }}
-          >
-            重试
-          </button>
-        </div>
-      )}
+            {!lists && !loadError && (
+              <Section id="friends-mine" title="我的读友">
+                <SkeletonPeople />
+              </Section>
+            )}
 
-      {!lists && !loadError && (
-        <Section id="friends-mine" title="我的读友">
-          <SkeletonPeople />
-        </Section>
-      )}
+            {lists && (
+              <Section id="friends-mine" title="我的读友" count={totals.friends}>
+                {lists.friends.length ? (
+                  <>
+                    <ul className="people">
+                      {lists.friends.map((f) => (
+                        <Person key={f.user_id} user={f}>
+                          <button
+                            type="button"
+                            className="text-btn is-weak"
+                            disabled={busy !== null}
+                            onClick={() => setRemoving(f)}
+                            aria-label={`解除与「${f.nickname}」的读友关系`}
+                          >
+                            解除
+                          </button>
+                        </Person>
+                      ))}
+                    </ul>
+                    {hasMore.friends && (
+                      <LoadMore busy={loadingMore === 'friends'} label="加载更多读友" onClick={() => loadMore('friends')} />
+                    )}
+                  </>
+                ) : (
+                  <p className="friends-empty">还没有读友。搜索用户名，发出第一份好友申请。</p>
+                )}
+              </Section>
+            )}
+          </div>
+        </main>
 
-      {lists && (
-        <>
-          {lists.incoming.length > 0 && (
+        <aside className="friends-side" aria-label="添加读友与好友申请">
+          <Section id="friends-add" title="添加读友">
+            <UserSearch version={searchVersion} busy={busy} run={run} />
+          </Section>
+
+          {lists?.incoming.length ? (
             <Section id="friends-in" title="收到的申请" count={totals.incoming}>
               <ul className="people">
                 {lists.incoming.map((r) => (
-                  <Person key={r.id} user={r.user} meta={<RequestTime at={r.created_at} verb="申请" />}>
+                  <Person key={r.id} user={r.user} size={24} meta={<RequestTime at={r.created_at} verb="申请" />}>
                     <button
                       type="button"
                       className="btn btn-primary btn-compact"
@@ -403,40 +439,13 @@ export default function Friends() {
                 />
               )}
             </Section>
-          )}
+          ) : null}
 
-          <Section id="friends-mine" title="我的读友" count={totals.friends}>
-            {lists.friends.length ? (
-              <>
-                <ul className="people">
-                  {lists.friends.map((f) => (
-                    <Person key={f.user_id} user={f}>
-                      <button
-                        type="button"
-                        className="text-btn is-weak"
-                        disabled={busy !== null}
-                        onClick={() => setRemoving(f)}
-                        aria-label={`解除与「${f.nickname}」的读友关系`}
-                      >
-                        解除
-                      </button>
-                    </Person>
-                  ))}
-                </ul>
-                {hasMore.friends && (
-                  <LoadMore busy={loadingMore === 'friends'} label="加载更多读友" onClick={() => loadMore('friends')} />
-                )}
-              </>
-            ) : (
-              <p className="friends-empty">还没有读友。搜索用户名，发出第一份好友申请。</p>
-            )}
-          </Section>
-
-          {lists.outgoing.length > 0 && (
+          {lists?.outgoing.length ? (
             <Section id="friends-out" title="发出的申请" count={totals.outgoing}>
               <ul className="people">
                 {lists.outgoing.map((r) => (
-                  <Person key={r.id} user={r.user} meta={<RequestTime at={r.created_at} verb="发出" />}>
+                  <Person key={r.id} user={r.user} size={24} meta={<RequestTime at={r.created_at} verb="发出" />}>
                     <span className="relation-tag">等待回应</span>
                     <button
                       type="button"
@@ -458,9 +467,9 @@ export default function Friends() {
                 />
               )}
             </Section>
-          )}
-        </>
-      )}
+          ) : null}
+        </aside>
+      </div>
 
       <ConfirmDialog
         open={removing !== null}

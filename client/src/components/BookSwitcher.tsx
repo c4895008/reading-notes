@@ -1,8 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { ApiError } from '../api/client';
-import { BOOK_LIMITS, BOOK_STATUS_LABEL, createBook, type Book, type BookStatus } from '../api/books';
+import { BOOK_LIMITS, BOOK_STATUS_LABEL, createBook, deleteBook, updateBook, type Book, type BookStatus } from '../api/books';
 import { relativeDay } from '../lib/time';
+import { searchKey, squash, usePinyin } from '../lib/pinyin';
 import { BookIcon, CheckCircleIcon, SearchIcon } from './Icons';
+import { ConfirmPanel, RowActions } from './SwitcherParts';
 import './BookSwitcher.css';
 
 export type BookScopeValue = number | 'none' | null;
@@ -20,21 +22,11 @@ type Props = {
 
 type Tab = 'all' | 'reading' | 'deep';
 type Option = { key: string; scope: BookScopeValue; book?: Book };
+type Mode = { kind: 'list' } | { kind: 'form'; book: Book | null } | { kind: 'delete'; book: Book };
 
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform);
 const MOD = MAC ? '⌘' : 'Ctrl';
-const squash = (s: string) => s.toLowerCase().replace(/\s+/g, '');
-
-type Pinyin = typeof import('pinyin-pro').pinyin;
-
-// 书名 + 作者 + 全拼 + 首字母，拼成一条供包含匹配
-function searchKey(book: Book, pinyin: Pinyin | null) {
-  const text = `${book.title}${book.author ?? ''}`;
-  if (!pinyin) return squash(text);
-  const full = pinyin(text, { toneType: 'none', type: 'array', nonZh: 'consecutive' }).join('');
-  const first = pinyin(text, { pattern: 'first', toneType: 'none', type: 'array', nonZh: 'consecutive' }).join('');
-  return squash(`${text}|${full}|${first}`);
-}
+const LIST: Mode = { kind: 'list' };
 
 export default function BookSwitcher({ open, books, unfiledCount, current, weekOnly, onPick, onToggleWeek, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -44,8 +36,8 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<Tab>('all');
   const [active, setActive] = useState(0);
-  const [pinyin, setPinyin] = useState<Pinyin | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [mode, setMode] = useState<Mode>(LIST);
+  const pinyin = usePinyin(open);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -53,7 +45,7 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
     const returnTo = document.activeElement as HTMLElement | null;
     setQuery('');
     setTab('all');
-    setCreating(false);
+    setMode(LIST);
     dialog.showModal();
     inputRef.current?.focus();
     return () => {
@@ -62,20 +54,7 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
     };
   }, [open]);
 
-  useEffect(() => {
-    if (!open || pinyin) return;
-    let alive = true;
-    import('pinyin-pro')
-      .then((m) => {
-        if (alive) setPinyin(() => m.pinyin);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [open, pinyin]);
-
-  const keys = useMemo(() => new Map((books ?? []).map((b) => [b.id, searchKey(b, pinyin)])), [books, pinyin]);
+  const keys = useMemo(() => new Map((books ?? []).map((b) => [b.id, searchKey(`${b.title}${b.author ?? ''}`, pinyin)])), [books, pinyin]);
 
   const counts = useMemo(() => {
     const list = books ?? [];
@@ -99,11 +78,16 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
     listRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [active]);
 
+  function backToList() {
+    setMode(LIST);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
   function onKeyDown(e: KeyboardEvent<HTMLDialogElement>) {
     const mod = MAC ? e.metaKey : e.ctrlKey;
     if (mod && e.key.toLowerCase() === 'o') {
       e.preventDefault();
-      setCreating(true);
+      setMode({ kind: 'form', book: null });
       return;
     }
     if (mod && e.key.toLowerCase() === 'd') {
@@ -112,13 +96,13 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
       onClose();
       return;
     }
-    if (creating) return;
+    if (mode.kind !== 'list') return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (!options.length) return;
       const step = e.key === 'ArrowDown' ? 1 : -1;
       setActive((i) => (i + step + options.length) % options.length);
-    } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+    } else if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.target === inputRef.current) {
       const option = options[active];
       if (option) {
         e.preventDefault();
@@ -141,10 +125,8 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
       onKeyDown={onKeyDown}
       onCancel={(e) => {
         e.preventDefault();
-        if (creating) {
-          setCreating(false);
-          inputRef.current?.focus();
-        } else onClose();
+        if (mode.kind !== 'list') backToList();
+        else onClose();
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -167,22 +149,25 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
               aria-controls="bs-options"
               onChange={(e) => {
                 setQuery(e.target.value);
-                setCreating(false);
+                setMode(LIST);
               }}
             />
             <kbd className="bs-kbd">ESC</kbd>
           </label>
 
-          {creating ? (
-            <CreateForm
+          {mode.kind === 'form' && (
+            <BookForm
+              key={mode.book?.id ?? 'new'}
+              book={mode.book}
               initialTitle={query.trim()}
-              onCancel={() => {
-                setCreating(false);
-                inputRef.current?.focus();
-              }}
-              onCreated={(book) => onPick(book.id)}
+              onCancel={backToList}
+              onSaved={(book) => (mode.book ? backToList() : onPick(book.id))}
             />
-          ) : (
+          )}
+
+          {mode.kind === 'delete' && <DeleteBook book={mode.book} onDone={backToList} />}
+
+          {mode.kind === 'list' && (
             <>
               <div className="bs-tabs">
                 <div role="tablist" aria-label="按阅读状态">
@@ -210,7 +195,7 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
                 {books !== null && options.length === 0 && (
                   <li className="bs-state">
                     {needle ? `没有匹配「${query.trim()}」的书。` : '这个分组还没有书。'}
-                    <button type="button" className="bs-link" onClick={() => setCreating(true)}>
+                    <button type="button" className="bs-link" onClick={() => setMode({ kind: 'form', book: null })}>
                       新建一本书
                     </button>
                   </li>
@@ -225,6 +210,8 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
                     current={o.scope === current}
                     onHover={() => setActive(i)}
                     onPick={() => onPick(o.scope)}
+                    onEdit={() => o.book && setMode({ kind: 'form', book: o.book })}
+                    onDelete={() => o.book && setMode({ kind: 'delete', book: o.book })}
                   />
                 ))}
               </ul>
@@ -234,7 +221,7 @@ export default function BookSwitcher({ open, books, unfiledCount, current, weekO
           <div className="bs-foot">
             <span className="bs-shortcuts">
               快捷操作：
-              <button type="button" className="bs-shortcut" onClick={() => setCreating(true)}>
+              <button type="button" className="bs-shortcut" onClick={() => setMode({ kind: 'form', book: null })}>
                 <kbd>{MOD}O</kbd> 打开新书
               </button>
               <button
@@ -267,6 +254,8 @@ function Row({
   current,
   onHover,
   onPick,
+  onEdit,
+  onDelete,
 }: {
   option: Option;
   index: number;
@@ -275,6 +264,8 @@ function Row({
   current: boolean;
   onHover: () => void;
   onPick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const { book } = option;
   const title = book ? `《${book.title}》` : option.scope === 'none' ? '未归类' : '全部书籍';
@@ -284,52 +275,76 @@ function Row({
       ? `还没归入任何书的笔记 · ${unfiledCount} 条`
       : '不限书籍，查看全部笔记';
   return (
-    <li
-      role="option"
-      aria-selected={active}
-      data-index={index}
-      className={`bs-row${active ? ' is-active' : ''}${current ? ' is-current' : ''}${book ? '' : ' is-pinned'}`}
-      onMouseMove={onHover}
-      onClick={onPick}
-    >
-      <span className="bs-tile" aria-hidden="true">
-        <BookIcon size={22} />
-      </span>
-      <span className="bs-main">
-        <span className="bs-title-line">
-          <span className="bs-title">{title}</span>
-          {current && <span className="bs-badge">当前聚焦</span>}
-          {book?.status && <span className="bs-chip">{BOOK_STATUS_LABEL[book.status]}</span>}
+    <li role="presentation" className={`bs-item${book ? ' has-acts' : ''}`} onMouseMove={onHover} onFocus={onHover}>
+      <div
+        role="option"
+        aria-selected={active}
+        data-index={index}
+        className={`bs-row${active ? ' is-active' : ''}${current ? ' is-current' : ''}${book ? '' : ' is-pinned'}`}
+        onClick={onPick}
+      >
+        <span className="bs-tile" aria-hidden="true">
+          <BookIcon size={22} />
         </span>
-        <span className="bs-sub">{sub}</span>
-      </span>
-      {current ? (
-        <span className="bs-check" aria-hidden="true">
-          <CheckCircleIcon size={22} />
+        <span className="bs-main">
+          <span className="bs-title-line">
+            <span className="bs-title">{title}</span>
+            {current && <span className="bs-badge">当前聚焦</span>}
+            {book?.status && <span className="bs-chip">{BOOK_STATUS_LABEL[book.status]}</span>}
+          </span>
+          <span className="bs-sub">{sub}</span>
         </span>
-      ) : (
-        <span className="bs-go" aria-hidden="true">
-          ↵ 跳转
-        </span>
+        {current ? (
+          <span className="bs-check" aria-hidden="true">
+            <CheckCircleIcon size={22} />
+          </span>
+        ) : (
+          <span className="bs-go" aria-hidden="true">
+            ↵ 跳转
+          </span>
+        )}
+      </div>
+      {book && (
+        <RowActions
+          editLabel={`编辑《${book.title}》`}
+          deleteLabel={`删除《${book.title}》`}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       )}
     </li>
   );
 }
 
-const STATUS_OPTIONS: { value: BookStatus | ''; label: string }[] = [
-  { value: '', label: '不设置' },
+function DeleteBook({ book, onDone }: { book: Book; onDone: () => void }) {
+  return (
+    <ConfirmPanel
+      title={`删除《${book.title}》？`}
+      message={`这本书下的 ${book.note_count} 条笔记将变为未归类，笔记本身不会被删除。`}
+      onCancel={onDone}
+      onConfirm={async () => {
+        await deleteBook(book.id);
+        onDone();
+      }}
+    />
+  );
+}
+
+const STATUS_OPTIONS: { value: BookStatus | null; label: string }[] = [
+  { value: null, label: '不设置' },
   { value: 'reading', label: '在读' },
   { value: 'deep', label: '精读中' },
   { value: 'done', label: '读完' },
 ];
 
-function CreateForm({ initialTitle, onCancel, onCreated }: { initialTitle: string; onCancel: () => void; onCreated: (book: Book) => void }) {
-  const [title, setTitle] = useState(initialTitle);
-  const [author, setAuthor] = useState('');
-  const [status, setStatus] = useState<BookStatus | ''>('reading');
+function BookForm({ book, initialTitle, onCancel, onSaved }: { book: Book | null; initialTitle: string; onCancel: () => void; onSaved: (book: Book) => void }) {
+  const [title, setTitle] = useState(book?.title ?? initialTitle);
+  const [author, setAuthor] = useState(book?.author ?? '');
+  const [status, setStatus] = useState<BookStatus | null>(book ? book.status : 'reading');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const statusId = useId();
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -337,14 +352,16 @@ function CreateForm({ initialTitle, onCancel, onCreated }: { initialTitle: strin
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim()) {
+    const input = { title: title.trim(), author: author.trim() || null, status };
+    if (!input.title) {
       setError('请填写书名');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      onCreated(await createBook({ title: title.trim(), author: author.trim() || null, status: status || null }));
+      const saved = book ? await updateBook(book.id, input) : await createBook(input);
+      onSaved(saved);
     } catch (err) {
       const fields = err instanceof ApiError ? err.details?.fields : undefined;
       setError(fields ? Object.values(fields)[0] : (err as Error).message);
@@ -354,7 +371,7 @@ function CreateForm({ initialTitle, onCancel, onCreated }: { initialTitle: strin
 
   return (
     <form className="bs-create" onSubmit={submit}>
-      <p className="bs-create-head">打开新书</p>
+      <p className="bs-create-head">{book ? `编辑《${book.title}》` : '打开新书'}</p>
       <label className="bs-field">
         <span>书名</span>
         <input ref={titleRef} value={title} maxLength={BOOK_LIMITS.title} placeholder="例如：活法" onChange={(e) => setTitle(e.target.value)} />
@@ -364,11 +381,11 @@ function CreateForm({ initialTitle, onCancel, onCreated }: { initialTitle: strin
         <input value={author} maxLength={BOOK_LIMITS.author} placeholder="可不填" onChange={(e) => setAuthor(e.target.value)} />
       </label>
       <div className="bs-field">
-        <span id="bs-status-label">状态</span>
-        <div className="bs-status" role="radiogroup" aria-labelledby="bs-status-label">
+        <span id={statusId}>状态</span>
+        <div className="bs-status" role="radiogroup" aria-labelledby={statusId}>
           {STATUS_OPTIONS.map((s) => (
             <button
-              key={s.value}
+              key={s.label}
               type="button"
               role="radio"
               aria-checked={status === s.value}
@@ -390,7 +407,7 @@ function CreateForm({ initialTitle, onCancel, onCreated }: { initialTitle: strin
           返回列表
         </button>
         <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? '创建中…' : '创建并切换'}
+          {busy ? '保存中…' : book ? '保存' : '创建并切换'}
         </button>
       </div>
     </form>

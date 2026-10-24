@@ -30,7 +30,7 @@ function TalkRow({ talk, back }: { talk: TalkSummary; back: string }) {
   return (
     <li>
       <Link to={`/talks/${talk.id}`} state={{ back }} className="talk-row">
-        <AvatarGroup users={talk.participants} max={4} size={32} />
+        <AvatarGroup users={talk.participants} max={4} size={24} />
         <span className="talk-row-main">
           <span className="talk-row-title">关于『{talk.title}』</span>
           <span className="talk-row-meta">
@@ -171,56 +171,62 @@ export default function Talks() {
   const back = tab === 'active' ? '/talks' : `/talks?tab=${tab}`;
 
   return (
-    <section className="page page-enter" aria-labelledby="talks-title">
-      <h1 id="talks-title" className="page-title">
-        讨论
-      </h1>
-      <p className="page-hint">每场讨论，都从一条具体的笔记开始。</p>
-
-      <div className="segmented talk-tabs" role="group" aria-label="讨论状态">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            aria-pressed={tab === t}
-            onClick={() => setParams(t === 'active' ? {} : { tab: t }, { replace: true })}
-          >
-            {STATUS_LABEL[t]}（{counts ? counts[t] : '–'}）
-          </button>
-        ))}
+    <section className="page page-enter pane-page talks" aria-labelledby="talks-title">
+      <div className="pane-bar">
+        <div className="pane-heading">
+          <h1 id="talks-title" className="pane-title">
+            讨论
+          </h1>
+          <span className="pane-title-sub">每场讨论，都从一条具体的笔记开始。</span>
+        </div>
+        <div className="segmented talk-tabs" role="group" aria-label="讨论状态">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={tab === t}
+              onClick={() => setParams(t === 'active' ? {} : { tab: t }, { replace: true })}
+            >
+              {STATUS_LABEL[t]}
+              <span className="talk-tab-count">{counts ? counts[t] : '–'}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {state.status === 'loading' && <SkeletonRows />}
-      {state.status === 'error' && (
-        <div className="notes-state" role="alert">
-          <p>{state.message}</p>
-          <button type="button" className="btn btn-ghost" onClick={() => setReload((n) => n + 1)}>
-            重试
-          </button>
-        </div>
-      )}
-      {state.status === 'ready' && state.items.length === 0 && <Empty tab={state.tab} />}
-      {state.status === 'ready' && state.items.length > 0 && (
-        <>
-          <ul className="talk-list" aria-busy={busy}>
-            {state.items.map((t) => (
-              <TalkRow key={t.id} talk={t} back={back} />
-            ))}
-          </ul>
-          {state.hasMore && (
-            <div className="notes-more">
-              {moreError && (
-                <p className="field-msg is-error" role="alert">
-                  {moreError}
-                </p>
-              )}
-              <button type="button" className="btn btn-ghost" onClick={loadMore} disabled={busy}>
-                {busy ? '加载中…' : moreError ? '重新加载' : '加载更多'}
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      <div className="talks-body">
+        {state.status === 'loading' && <SkeletonRows />}
+        {state.status === 'error' && (
+          <div className="notes-state" role="alert">
+            <p>{state.message}</p>
+            <button type="button" className="btn btn-ghost" onClick={() => setReload((n) => n + 1)}>
+              重试
+            </button>
+          </div>
+        )}
+        {state.status === 'ready' && state.items.length === 0 && <Empty tab={state.tab} />}
+        {state.status === 'ready' && state.items.length > 0 && (
+          <>
+            <ul className="talk-list" aria-busy={busy}>
+              {state.items.map((t) => (
+                <TalkRow key={t.id} talk={t} back={back} />
+              ))}
+            </ul>
+            {state.hasMore && (
+              <div className="notes-more">
+                {moreError && (
+                  <p className="field-msg is-error" role="alert">
+                    {moreError}
+                  </p>
+                )}
+                <button type="button" className="btn btn-ghost" onClick={loadMore} disabled={busy}>
+                  {busy ? '加载中…' : moreError ? '重新加载' : '加载更多'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
 }

@@ -28,7 +28,7 @@ body {
 }
 
 ::selection {
-  background: #cfe2ff;
+  background: var(--selection);
 }
 
 ::-webkit-scrollbar {
@@ -42,11 +42,11 @@ body {
 
 ::-webkit-scrollbar-thumb {
   border-radius: var(--radius-pill);
-  background: rgba(26, 28, 29, 0.14);
+  background: rgba(var(--ink-rgb), 0.14);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(26, 28, 29, 0.24);
+  background: rgba(var(--ink-rgb), 0.24);
 }
 
 h1,
@@ -112,14 +112,14 @@ a {
 }
 
 .btn-primary {
-  background: #09090a;
+  background: var(--primary-bg);
   box-shadow: var(--shadow-card);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn-primary:hover {
-  background: #262628;
-  color: #fff;
+  background: var(--primary-hover);
+  color: var(--on-primary);
 }
 
 .btn-ghost {
@@ -129,19 +129,19 @@ a {
 }
 
 .btn-ghost:hover {
-  border-color: rgba(26, 28, 29, 0.28);
+  border-color: rgba(var(--ink-rgb), 0.28);
   background: var(--surface-2);
   color: var(--ink);
 }
 
 .btn-danger {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-solid);
 }
 
 .btn-danger:hover {
   background: var(--danger-deep);
-  color: #fff;
+  color: var(--on-solid);
 }
 
 .btn:disabled {

@@ -13,7 +13,7 @@
   align-items: center;
   min-height: 42px;
   padding: 0 46px 8px 6px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(var(--sheet-rgb), 0.95);
   backdrop-filter: blur(14px);
 }
 
@@ -129,7 +129,7 @@
   padding: 0 5px;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-solid);
   font-size: 10px;
   font-weight: 700;
   line-height: 1;

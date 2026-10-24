@@ -127,7 +127,7 @@
 
 .auth-brand-mobile .auth-brand-icon {
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
 }
 
 .auth-title {

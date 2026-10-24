@@ -16,6 +16,21 @@
   --kind-ink: #37755a;
 }
 
+[data-theme='dark'] .kind-viewpoint {
+  --kind-bg: rgba(78, 129, 238, 0.16);
+  --kind-ink: #8fb2f5;
+}
+
+[data-theme='dark'] .kind-question {
+  --kind-bg: rgba(232, 160, 61, 0.15);
+  --kind-ink: #f0bf78;
+}
+
+[data-theme='dark'] .kind-summary {
+  --kind-bg: rgba(85, 180, 132, 0.15);
+  --kind-ink: #7fd0a6;
+}
+
 .kind-dot {
   flex: none;
   width: 8px;

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react';
 import type { ApiError } from '../api/client';
 import { changePassword, getMyBadges, setPresetAvatar, updateNickname, uploadAvatar, type WallBadge } from '../api/me';
 import { useAuth } from '../auth/AuthContext';
@@ -7,6 +7,7 @@ import { BadgeDialog, BadgeIcon, type BadgeDetail } from '../components/Badge';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PresetArt, { PRESET_NAMES } from '../components/presetArt';
 import { useToast } from '../components/Toast';
+import { setThemePref, useThemePref, type ThemePref } from '../lib/theme';
 import { formatDate } from '../lib/time';
 import { Field, PasswordInput } from './AuthParts';
 import './Page.css';
@@ -42,6 +43,91 @@ async function cropSquare(file: File): Promise<Blob | null> {
   const webp = await toBlob(canvas, 'image/webp');
   if (webp?.type === 'image/webp') return webp;
   return toBlob(canvas, 'image/jpeg');
+}
+
+const THEMES: { value: ThemePref; label: string }[] = [
+  { value: 'system', label: '自动' },
+  { value: 'light', label: '浅色' },
+  { value: 'dark', label: '深色' },
+];
+const ARROW_STEP: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+
+function ThemeThumb({ tone }: { tone: 'light' | 'dark' }) {
+  return (
+    <span className={`theme-scene is-${tone}`}>
+      <span className="theme-window">
+        <span className="theme-dots">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className="theme-bar" />
+        <span className="theme-line" />
+        <span className="theme-line is-short" />
+      </span>
+    </span>
+  );
+}
+
+function AppearanceSection() {
+  const pref = useThemePref();
+  const toast = useToast();
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function choose(next: ThemePref) {
+    if (next === pref) return;
+    setThemePref(next);
+    toast('外观已切换');
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    const step = ARROW_STEP[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const i = (THEMES.findIndex((t) => t.value === pref) + step + THEMES.length) % THEMES.length;
+    choose(THEMES[i].value);
+    refs.current[i]?.focus();
+  }
+
+  return (
+    <section className="settings-section" aria-labelledby="settings-theme">
+      <h2 id="settings-theme" className="settings-heading">
+        外观
+      </h2>
+      <p className="settings-desc">只在这台设备上生效。</p>
+      <div className="theme-options" role="radiogroup" aria-labelledby="settings-theme" onKeyDown={onKeyDown}>
+        {THEMES.map((t, i) => {
+          const checked = t.value === pref;
+          return (
+            <button
+              key={t.value}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              tabIndex={checked ? 0 : -1}
+              className={`theme-option${checked ? ' is-selected' : ''}`}
+              onClick={() => choose(t.value)}
+            >
+              <span className="theme-thumb" aria-hidden="true">
+                {t.value === 'system' ? (
+                  <>
+                    <ThemeThumb tone="light" />
+                    <ThemeThumb tone="dark" />
+                  </>
+                ) : (
+                  <ThemeThumb tone={t.value} />
+                )}
+              </span>
+              <span className="theme-name">{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function AvatarSection() {
@@ -431,6 +517,7 @@ export default function Settings() {
         </button>
       </div>
 
+      <AppearanceSection />
       <AvatarSection />
       <NicknameSection />
       <PasswordSection />

@@ -76,7 +76,87 @@
   color: var(--muted);
 }
 
+/* 客户端式窗格页：贴边铺满，顶部 48px 工具栏 */
+.page.pane-page {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+.pane-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 14px 0 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.pane-bar .back-link {
+  flex: none;
+  min-height: 32px;
+  font-size: 13px;
+}
+
+.pane-bar-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.pane-bar .btn {
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.pane-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pane-title {
+  flex: none;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.pane-title-count {
+  margin-left: 6px;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.pane-title-sub {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 899px) {
+  .pane-bar {
+    top: var(--nav-height);
+  }
+
   .page {
     padding: 28px 18px 48px;
   }

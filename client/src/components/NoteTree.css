@@ -28,8 +28,8 @@
   background-image: linear-gradient(
     to right,
     transparent calc(var(--step) / 2 - 0.5px),
-    rgba(30, 30, 28, 0.1) calc(var(--step) / 2 - 0.5px),
-    rgba(30, 30, 28, 0.1) calc(var(--step) / 2 + 0.5px),
+    rgba(var(--tint-rgb), 0.1) calc(var(--step) / 2 - 0.5px),
+    rgba(var(--tint-rgb), 0.1) calc(var(--step) / 2 + 0.5px),
     transparent calc(var(--step) / 2 + 0.5px)
   );
   background-size: var(--step) 100%;
@@ -75,7 +75,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: rgba(30, 30, 28, 0.2);
+  background: rgba(var(--tint-rgb), 0.2);
 }
 
 .tree-link {

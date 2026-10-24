@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light;
+
   --paper: #f9f9fb;
   --surface: #ffffff;
   --surface-strong: #ffffff;
@@ -29,6 +31,54 @@
   --danger-soft: #fff0ee;
   --warning-bg: #fff5d6;
   --warning-ink: #705600;
+
+  --primary-bg: #09090a;
+  --primary-hover: #262628;
+  --on-primary: #fff;
+  --logo-bg: #111214;
+  --on-ink: #fff;
+  --on-solid: #fff;
+  --selection: #cfe2ff;
+
+  /* rgba(var(--x-rgb), a) 的底色通道：深色下换成白色等，透明度保持不变 */
+  --ink-rgb: 26, 28, 29;
+  --tint-rgb: 30, 30, 28;
+  --shade-rgb: 0, 0, 0;
+  --accent-rgb: 0, 102, 204;
+  --bar-rgb: 249, 249, 251;
+  --sheet-rgb: 255, 255, 255;
+
+  /* 书籍切换器、笔记列表、书籍选择器的色板 */
+  --brand: #285ab0;
+  --brand-soft: #eef3fc;
+  --brand-faint: #f2f6fd;
+  --brand-tint: #e4ebf7;
+  --brand-tint-strong: #e1eaf9;
+  --brand-line: #c9d8f2;
+  --brand-muted: #6b8cc7;
+  --on-brand: #fff;
+  --ui-ink: #202222;
+  --ui-ink-soft: #48484b;
+  --ui-muted: #76757a;
+  --ui-faint: #8e8e93;
+  --ui-faint-2: #a3a3a8;
+  --ui-ghost: #c5c5c8;
+  --ui-fill-0: #fafafb;
+  --ui-fill-1: #f6f6f7;
+  --ui-fill-2: #f1f1f3;
+  --ui-fill-3: #ededef;
+  --ui-fill-4: #e7e7ea;
+  --ui-fill-5: #e1e1e3;
+  --ui-line-0: #f3f3f4;
+  --ui-line-1: #f0f0f1;
+  --ui-line-2: #e8e8e9;
+  --ui-line-3: #eaeaeb;
+  --ui-line-4: #eae9ec;
+  --ui-line-5: #e3e3e5;
+  --ui-line-6: #d8d8db;
+  --ui-danger-soft: #fbe9e7;
+  --ui-success: #44926c;
+  --ui-primary: #0b0b0c;
 
   --font-display: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
@@ -66,4 +116,88 @@
   --content-width: 960px;
   --reader-width: 720px;
   --touch: 40px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --paper: #161618;
+  --surface: #1e1e21;
+  --surface-strong: #252528;
+  --surface-2: #26262a;
+  --surface-3: #2e2e33;
+  --sidebar: #1b1b1e;
+  --sidebar-active: #313136;
+
+  --ink: #ececee;
+  --ink-hover: #ffffff;
+  --ink-soft: #c7c7cc;
+  --muted: #9a9aa1;
+  --faint: #6e6e75;
+
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
+
+  --accent: #3d8ef5;
+  --accent-deep: #6aa9ff;
+  --accent-soft: rgba(61, 142, 245, 0.2);
+  --accent-faint: rgba(61, 142, 245, 0.12);
+
+  --success: #3dbf8a;
+  --success-deep: #6ad5a8;
+  --success-soft: rgba(61, 191, 138, 0.14);
+  --danger: #ff6b5e;
+  --danger-deep: #ff8f85;
+  --danger-soft: rgba(255, 107, 94, 0.13);
+  --warning-bg: rgba(240, 190, 60, 0.14);
+  --warning-ink: #f0c862;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  --primary-bg: #ececee;
+  --primary-hover: #ffffff;
+  --on-primary: #161618;
+  --logo-bg: #ececee;
+  --on-ink: #161618;
+  --on-solid: #0e1013;
+  --selection: rgba(61, 142, 245, 0.4);
+
+  --ink-rgb: 255, 255, 255;
+  --tint-rgb: 255, 255, 255;
+  --shade-rgb: 255, 255, 255;
+  --accent-rgb: 61, 142, 245;
+  --bar-rgb: 22, 22, 24;
+  --sheet-rgb: 30, 30, 33;
+
+  --brand: #7fa7ec;
+  --brand-soft: rgba(127, 167, 236, 0.16);
+  --brand-faint: rgba(127, 167, 236, 0.1);
+  --brand-tint: rgba(127, 167, 236, 0.2);
+  --brand-tint-strong: rgba(127, 167, 236, 0.24);
+  --brand-line: rgba(127, 167, 236, 0.38);
+  --brand-muted: #6f8fc4;
+  --on-brand: #10161f;
+  --ui-ink: #ececee;
+  --ui-ink-soft: #c7c7cc;
+  --ui-muted: #9a9aa1;
+  --ui-faint: #85858c;
+  --ui-faint-2: #74747b;
+  --ui-ghost: #57575e;
+  --ui-fill-0: #1b1b1e;
+  --ui-fill-1: #28282c;
+  --ui-fill-2: #2a2a2e;
+  --ui-fill-3: #303035;
+  --ui-fill-4: #36363b;
+  --ui-fill-5: #3c3c42;
+  --ui-line-0: rgba(255, 255, 255, 0.06);
+  --ui-line-1: rgba(255, 255, 255, 0.06);
+  --ui-line-2: rgba(255, 255, 255, 0.09);
+  --ui-line-3: rgba(255, 255, 255, 0.09);
+  --ui-line-4: rgba(255, 255, 255, 0.09);
+  --ui-line-5: rgba(255, 255, 255, 0.12);
+  --ui-line-6: rgba(255, 255, 255, 0.16);
+  --ui-danger-soft: rgba(255, 107, 94, 0.14);
+  --ui-success: #4cc394;
+  --ui-primary: #ececee;
 }

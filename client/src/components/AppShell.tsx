@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { listTags, TAGS_CHANGED, type Tag } from '../api/tags';
 import { useAuth } from '../auth/AuthContext';
 import { refreshPendingCount, setPendingCount, usePendingCount } from '../lib/pendingRequests';
 import { refreshUnreadTalks, setUnreadTalks, useUnreadTalks } from '../lib/unreadTalks';
 import AvatarMenu from './AvatarMenu';
 import { ExplorerProvider } from './Explorer';
 import {
-  BookIcon,
   FriendsIcon,
   GearIcon,
   LogoIcon,
   NoteIcon,
+  PenIcon,
   PlusIcon,
-  TagIcon,
   TalkIcon,
   UserIcon,
 } from './Icons';
@@ -52,32 +50,11 @@ export default function AppShell() {
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine);
   const pending = usePendingCount();
   const unreadTalks = useUnreadTalks();
-  const [tags, setTags] = useState<Tag[]>([]);
   const [explorer, setExplorer] = useState<{ key: string; node: ReactNode } | null>(null);
 
   const setExplorerContent = useCallback((key: string, node: ReactNode | null) => {
     setExplorer(node === null ? null : { key, node });
   }, []);
-
-  useEffect(() => {
-    let ctrl: AbortController;
-    const refresh = () => {
-      ctrl?.abort();
-      ctrl = new AbortController();
-      const signal = ctrl.signal;
-      listTags(signal)
-        .then((items) => {
-          if (!signal.aborted) setTags(items);
-        })
-        .catch(() => {});
-    };
-    refresh();
-    window.addEventListener(TAGS_CHANGED, refresh);
-    return () => {
-      ctrl.abort();
-      window.removeEventListener(TAGS_CHANGED, refresh);
-    };
-  }, [location.key]);
 
   useEffect(() => {
     const refresh = () => {
@@ -110,10 +87,7 @@ export default function AppShell() {
     return label;
   };
 
-  const params = new URLSearchParams(location.search);
-  const tagParam = params.get('tag');
-  const activeTag = tagParam && /^[1-9]\d*$/.test(tagParam) ? tagParam : null;
-  const allNotesActive = location.pathname.startsWith('/notes') && !activeTag && !params.get('book');
+  const allNotesActive = location.pathname.startsWith('/notes');
 
   return (
     <ExplorerProvider setter={setExplorerContent}>
@@ -141,48 +115,17 @@ export default function AppShell() {
             </Link>
 
             <Link to="/notes/new" className="new-note-button" aria-label="写笔记" title="写笔记">
-              <PlusIcon size={18} />
+              <PenIcon size={17} />
               <span>写笔记</span>
             </Link>
           </div>
 
           <div className="sidebar-scroll">
-            <nav className="sidebar-section" aria-label="知识沉淀">
-              <p className="sidebar-caption">知识沉淀</p>
+            <nav className="sidebar-nav" aria-label="主导航菜单">
               <Link to="/notes" className="sidebar-link" aria-label="全部笔记" title="全部笔记" aria-current={allNotesActive ? 'page' : undefined}>
                 <span className="sidebar-link-icon"><NoteIcon size={19} /></span>
                 <span className="sidebar-link-label">全部笔记</span>
               </Link>
-              <Link to="/books" className="sidebar-link" aria-label="书架" title="书架" aria-current={location.pathname === '/books' ? 'page' : undefined}>
-                <span className="sidebar-link-icon"><BookIcon size={18} /></span>
-                <span className="sidebar-link-label">书架</span>
-              </Link>
-              <Link to="/tags" className="sidebar-link" aria-label="标签管理" title="标签管理" aria-current={location.pathname === '/tags' ? 'page' : undefined}>
-                <span className="sidebar-link-icon"><TagIcon size={17} /></span>
-                <span className="sidebar-link-label">标签管理</span>
-              </Link>
-            </nav>
-
-            {tags.length > 0 && (
-              <nav className="sidebar-section sidebar-tags" aria-label="标签">
-                <p className="sidebar-caption">标签</p>
-                {tags.map((tag) => (
-                  <Link
-                    key={tag.id}
-                    to={`/notes?tag=${tag.id}`}
-                    className="sidebar-link"
-                    aria-current={location.pathname === '/notes' && activeTag === String(tag.id) ? 'page' : undefined}
-                  >
-                    <span className="sidebar-link-icon"><TagIcon size={17} /></span>
-                    <span className="sidebar-link-label">{tag.name}</span>
-                    <span className="sidebar-count">{tag.note_count}</span>
-                  </Link>
-                ))}
-              </nav>
-            )}
-
-            <nav className="sidebar-section" aria-label="交流协作">
-              <p className="sidebar-caption">交流协作</p>
               <NavLink to="/talks" className="sidebar-link" aria-label={navAriaLabel('/talks', '讨论')} title="讨论">
                 <span className="sidebar-link-icon"><TalkIcon size={19} /></span>
                 <span className="sidebar-link-label">讨论</span>
