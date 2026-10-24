@@ -33,7 +33,6 @@ export const router = createBrowserRouter([
           { path: 'notes/:id', element: <NoteView /> },
           { path: 'notes/:id/edit', element: <NoteEditor key="edit" /> },
           { path: 'tags', element: <Navigate to="/notes" replace /> },
-          { path: 'books', element: <Navigate to="/notes" replace /> },
           { path: 'talks', element: <Talks /> },
           { path: 'talks/:id', element: <Talk /> },
           { path: 'friends', element: <Friends /> },

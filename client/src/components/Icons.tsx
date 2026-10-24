@@ -176,37 +176,8 @@ export const XIcon = ({ size = 14 }: IconProps) => (
   </svg>
 );
 
-export const BookIcon = ({ size = 20 }: IconProps) => (
-  <svg {...base(size)}>
-    <path d="M5 5.5A2 2 0 0 1 7 3.5h12v14H7a2 2 0 0 0-2 2z" />
-    <path d="M5 19.5a2 2 0 0 0 2 2h12v-4" />
-    <path d="M9 7.5h6" />
-  </svg>
-);
-
 export const FilterIcon = ({ size = 16 }: IconProps) => (
   <svg {...base(size)}>
     <path d="M4 5.5h16l-6.2 7.2v5.6l-3.6 1.7v-7.3z" />
-  </svg>
-);
-
-export const ChecklistIcon = ({ size = 16 }: IconProps) => (
-  <svg {...base(size)}>
-    <path d="m4 6.5 1.6 1.6L8.5 5M4 15.5l1.6 1.6 2.9-3.1" />
-    <path d="M11.5 7h8.5M11.5 16h8.5" />
-  </svg>
-);
-
-export const TableIcon = ({ size = 16 }: IconProps) => (
-  <svg {...base(size)}>
-    <rect x="4" y="4.5" width="16" height="15" rx="2" />
-    <path d="M4 9.5h16M4 14.5h16M10 9.5v10" />
-  </svg>
-);
-
-export const CalendarIcon = ({ size = 16 }: IconProps) => (
-  <svg {...base(size)}>
-    <rect x="4" y="5.5" width="16" height="14" rx="2" />
-    <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />
   </svg>
 );

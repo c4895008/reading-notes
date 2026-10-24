@@ -61,21 +61,3 @@ export function ago(iso: string, now = new Date()): string {
   if (sameDay(d, now)) return `${Math.floor(diff / 3_600_000)} 小时前`;
   return formatTime(iso, now);
 }
-
-// 书籍「上次阅读」：今日 / 昨天 / N 天前（一周内）/ 日期
-export function relativeDay(iso: string, now = new Date()): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((start(now) - start(d)) / 86400000);
-  if (days <= 0) return '今日';
-  if (days === 1) return '昨天';
-  if (days < 7) return `${days} 天前`;
-  return formatDate(iso, now);
-}
-
-// 本周一 00:00（本地时区），转为 ISO 交给服务端按 UTC 比较
-export function weekStartIso(now = new Date()): string {
-  const offset = (now.getDay() + 6) % 7;
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset).toISOString();
-}

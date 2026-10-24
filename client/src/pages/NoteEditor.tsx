@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type TextareaHTMLAttributes } from 'react';
 import { useBlocker, useLocation, useNavigate, useParams, useSearchParams, type BlockerFunction } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import type { BookRef } from '../api/books';
 import { createNote, getNote, NOTE_LIMITS, promoteNote, updateNote, type NoteInput, type NoteKind, type NoteRef } from '../api/notes';
 import { TAGS_CHANGED, type NoteTag } from '../api/tags';
-import BookPicker from '../components/BookPicker';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useExplorerContent } from '../components/Explorer';
 import { BackIcon } from '../components/Icons';
@@ -18,14 +16,14 @@ import { NoteMissing, ReadingSkeleton } from './NoteView';
 import './Page.css';
 import './Notes.css';
 
-type Draft = { title: string; quote: string; content: string; kind: NoteKind; book: number | null };
-type FieldErrors = Partial<Record<keyof Draft | 'book_id', string>>;
+type Draft = { title: string; quote: string; content: string; kind: NoteKind };
+type FieldErrors = Partial<Record<keyof Draft, string>>;
 type NavState = { fromView?: boolean; back?: string } | null;
 type Mode = 'create' | 'edit' | 'refine' | 'supplement';
 
 const ID_RE = /^[1-9]\d{0,15}$/;
 
-const EMPTY: Draft = { title: '', quote: '', content: '', kind: 'viewpoint', book: null };
+const EMPTY: Draft = { title: '', quote: '', content: '', kind: 'viewpoint' };
 const SAVE_FAILED = '这次没有保存成功。内容还在，可以再试一次。';
 
 const count = (s: string) => [...s].length;
@@ -35,14 +33,7 @@ const toInput = (d: Draft): NoteInput => ({
   quote: d.quote.trim() ? d.quote : null,
   content: d.content.trim() ? d.content : '',
   kind: d.kind,
-  book_id: d.book,
 });
-
-// 从列表进入新建时，沿用列表当前所在的书
-function bookFromBack(back: string | undefined) {
-  const raw = back ? new URLSearchParams(back.split('?')[1] ?? '').get('book') : null;
-  return raw && ID_RE.test(raw) ? Number(raw) : null;
-}
 
 function AutoGrow(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -79,7 +70,7 @@ export function NewNoteRoute() {
   return <NoteEditor key={under ?? 'new'} under={under} />;
 }
 
-type Props = { refine?: NoteRef & { book?: BookRef | null }; under?: string | null };
+type Props = { refine?: NoteRef; under?: string | null };
 
 export default function NoteEditor({ refine, under = null }: Props) {
   const params = useParams();
@@ -99,10 +90,7 @@ export default function NoteEditor({ refine, under = null }: Props) {
   const [loadError, setLoadError] = useState('');
   const [reload, setReload] = useState(0);
   const [target, setTarget] = useState<NoteRef | null>(refine ?? null);
-  const [initial, setInitial] = useState<Draft>(() => ({
-    ...EMPTY,
-    book: refine ? (refine.book?.id ?? null) : mode === 'create' ? bookFromBack(navState?.back) : null,
-  }));
+  const [initial, setInitial] = useState<Draft>(EMPTY);
   const [draft, setDraft] = useState<Draft>(initial);
   const [pane, setPane] = useState<'edit' | 'preview'>('edit');
   const [saving, setSaving] = useState(false);
@@ -134,16 +122,12 @@ export default function NoteEditor({ refine, under = null }: Props) {
             quote: note.quote ?? '',
             content: note.content,
             kind: note.kind ?? 'viewpoint',
-            book: note.book?.id ?? null,
           };
           setInitial(loaded);
           setDraft(loaded);
           setEditTags(refreshedTags.current ?? note.tags);
         } else {
           setTarget({ id: note.id, title: note.title });
-          const book = note.book?.id ?? null;
-          setInitial((d) => ({ ...d, book }));
-          setDraft((d) => ({ ...d, book }));
         }
         setLoadState('ready');
       })
@@ -186,8 +170,7 @@ export default function NoteEditor({ refine, under = null }: Props) {
     draft.title !== initial.title ||
     draft.quote !== initial.quote ||
     draft.content !== initial.content ||
-    draft.kind !== initial.kind ||
-    draft.book !== initial.book;
+    draft.kind !== initial.kind;
 
   const shouldBlock = useCallback<BlockerFunction>(
     // 提炼编辑器与阅读页同一路径，只靠 history state 区分，因此任何离开都要拦
@@ -322,21 +305,15 @@ export default function NoteEditor({ refine, under = null }: Props) {
             save();
           }}
         >
-          <div className="editor-attrs">
-            <div className="editor-field">
-              <KindPicker
-                value={draft.kind}
-                onChange={(kind) => {
-                  setDraft((d) => ({ ...d, kind }));
-                  if (fieldErrors.kind) setFieldErrors((f) => ({ ...f, kind: undefined }));
-                }}
-              />
-              {fieldErrors.kind && <span className="field-msg is-error">{fieldErrors.kind}</span>}
-            </div>
-            <div className="editor-field">
-              <BookPicker value={draft.book} onChange={(book) => setDraft((d) => ({ ...d, book }))} />
-              {fieldErrors.book_id && <span className="field-msg is-error">{fieldErrors.book_id}</span>}
-            </div>
+          <div className="editor-field">
+            <KindPicker
+              value={draft.kind}
+              onChange={(kind) => {
+                setDraft((d) => ({ ...d, kind }));
+                if (fieldErrors.kind) setFieldErrors((f) => ({ ...f, kind: undefined }));
+              }}
+            />
+            {fieldErrors.kind && <span className="field-msg is-error">{fieldErrors.kind}</span>}
           </div>
 
           <div className="editor-field">

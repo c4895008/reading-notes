@@ -197,7 +197,7 @@ export default function NoteView() {
   const note = state.status === 'ready' ? state.note : null;
 
   if (note && navState?.compose === 'refine') {
-    return <NoteEditor key={location.key} refine={{ id: note.id, title: note.title, book: note.book }} />;
+    return <NoteEditor key={location.key} refine={{ id: note.id, title: note.title }} />;
   }
 
   function talkDone(result: InviteResult) {
@@ -325,11 +325,6 @@ export default function NoteView() {
                   <header className="reading-head">
                     <div className="reading-topmeta">
                       <KindBadge kind={note.kind} />
-                      {note.book && (
-                        <Link to={`/notes?book=${note.book.id}`} className="reading-book" title="查看这本书的全部笔记">
-                          《{note.book.title}》
-                        </Link>
-                      )}
                       <span className="reading-depth">{note.ancestors.length === 0 ? '顶层笔记' : `第 ${note.ancestors.length + 1} 层`}</span>
                       {childCount > 0 && <span className="reading-children">{childCount} 条子笔记</span>}
                       <TimeMeta note={note} />

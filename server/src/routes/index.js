@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { authRouter } from './auth.js';
-import { booksRouter } from './books.js';
 import { discussionsRouter } from './discussions.js';
 import { friendsRouter, usersRouter } from './friends.js';
 import { healthRouter } from './health.js';
@@ -14,7 +13,6 @@ apiRouter.use('/health', healthRouter);
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/notes', notesRouter);
 apiRouter.use('/tags', tagsRouter);
-apiRouter.use('/books', booksRouter);
 apiRouter.use('/users/me', meRouter);
 apiRouter.use('/users', usersRouter);
 apiRouter.use('/friends', friendsRouter);

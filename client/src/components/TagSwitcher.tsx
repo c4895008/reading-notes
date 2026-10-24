@@ -3,7 +3,7 @@ import { createTag, deleteTag, renameTag, TAG_NAME_MAX, type Tag } from '../api/
 import { searchKey, squash, usePinyin } from '../lib/pinyin';
 import { ConfirmPanel, RowActions } from './SwitcherParts';
 import { CheckCircleIcon, PlusIcon, SearchIcon, TagIcon } from './Icons';
-import './BookSwitcher.css';
+import './Switcher.css';
 
 type Props = {
   open: boolean;

@@ -1,5 +1,4 @@
 import { request } from './client';
-import type { BookRef } from './books';
 import type { TalkStatus, TalkSummary } from './discussions';
 import type { NoteTag } from './tags';
 
@@ -21,7 +20,6 @@ export type NoteSummary = {
   discussion_status: TalkStatus | null;
   message_count: number;
   tags: NoteTag[];
-  book: BookRef | null;
   created_at: string;
   updated_at: string;
 };
@@ -36,7 +34,6 @@ export type Note = {
   content: string;
   kind: NoteKind | null;
   tags: NoteTag[];
-  book: BookRef | null;
   created_at: string;
   updated_at: string;
   ancestors: NoteRef[];
@@ -53,7 +50,7 @@ export type TreeItem = {
   updated_at: string;
 };
 
-export type NoteInput = { title: string; quote: string | null; content: string; kind: NoteKind; book_id?: number | null };
+export type NoteInput = { title: string; quote: string | null; content: string; kind: NoteKind };
 
 export type DiscussionFilter = 'active' | 'ended' | 'none';
 export type NoteSort = 'updated' | 'created';
@@ -62,10 +59,8 @@ export type NoteQuery = {
   q?: string;
   page?: number;
   tag?: number;
-  book?: number | 'none';
   kind?: NoteKind;
   discussion?: DiscussionFilter;
-  since?: string;
   sort?: NoteSort;
 };
 
@@ -81,14 +76,12 @@ export const NOTE_LIMITS = { title: 80, quote: 2000, content: 20000 } as const;
 
 const notePath = (id: string | number) => `/notes/${encodeURIComponent(id)}`;
 
-export function listNotes({ q, page, tag, book, kind, discussion, since, sort }: NoteQuery, signal?: AbortSignal) {
+export function listNotes({ q, page, tag, kind, discussion, sort }: NoteQuery, signal?: AbortSignal) {
   const params = new URLSearchParams({ view: 'list' });
   if (q) params.set('q', q);
   if (tag) params.set('tag', String(tag));
-  if (book !== undefined) params.set('book', String(book));
   if (kind) params.set('kind', kind);
   if (discussion) params.set('discussion', discussion);
-  if (since) params.set('since', since);
   if (sort && sort !== 'updated') params.set('sort', sort);
   if (page && page > 1) params.set('page', String(page));
   return request<NotePage>(`/notes?${params}`, { signal });

@@ -6,11 +6,10 @@ import { NOTE_KINDS } from './NoteKind';
 export type FilterValue = {
   kind: NoteKind | null;
   discussion: DiscussionFilter | null;
-  weekOnly: boolean;
   sort: NoteSort;
 };
 
-export type FilterPatch = { kind?: string | null; discussion?: string | null; since?: string | null; sort?: string | null };
+export type FilterPatch = { kind?: string | null; discussion?: string | null; sort?: string | null };
 
 const DISCUSSIONS: { value: DiscussionFilter; label: string }[] = [
   { value: 'active', label: '讨论中' },
@@ -24,7 +23,7 @@ const SORTS: { value: NoteSort; label: string }[] = [
 ];
 
 export const activeFilterCount = (v: FilterValue) =>
-  Number(!!v.kind) + Number(!!v.discussion) + Number(v.weekOnly) + Number(v.sort !== 'updated');
+  Number(!!v.kind) + Number(!!v.discussion) + Number(v.sort !== 'updated');
 
 function Options<T extends string>({
   label,
@@ -114,13 +113,6 @@ export default function NoteFilters({ value, onChange }: { value: FilterValue; o
             options={DISCUSSIONS}
             onChange={(discussion) => onChange({ discussion })}
           />
-          <div className="nf-group">
-            <span className="nf-label">时间</span>
-            <label className="nf-check">
-              <input type="checkbox" checked={value.weekOnly} onChange={(e) => onChange({ since: e.target.checked ? 'week' : null })} />
-              仅看本周更新
-            </label>
-          </div>
           <Options
             label="排序"
             value={value.sort}
@@ -132,7 +124,7 @@ export default function NoteFilters({ value, onChange }: { value: FilterValue; o
               type="button"
               className="nf-clear"
               disabled={count === 0}
-              onClick={() => onChange({ kind: null, discussion: null, since: null, sort: null })}
+              onClick={() => onChange({ kind: null, discussion: null, sort: null })}
             >
               清除筛选
             </button>
