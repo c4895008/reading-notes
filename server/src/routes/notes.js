@@ -12,12 +12,17 @@ import {
   moveNote,
   noteNotFound,
   promoteNote,
+  setNoteVisibility,
   updateNote,
 } from '../services/notes.js';
 import { findTag, setNoteTags, tagNotFound } from '../services/tags.js';
 import { NOTE_KINDS, assertValid, charLength, parseNoteInput, readBody } from '../validate.js';
 
 export const notesRouter = Router();
+notesRouter.use('/:id/visibility', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 notesRouter.use(requireAuth);
 
 const ID_RE = /^[1-9]\d{0,15}$/;
@@ -136,6 +141,16 @@ notesRouter.put(
     const id = noteId(req);
     const input = parseNoteInput(readBody(req.body, NOTE_FIELDS));
     res.json({ data: { note: await updateNote(req.user.id, id, input) } });
+  }),
+);
+
+notesRouter.put(
+  '/:id/visibility',
+  ah(async (req, res) => {
+    const id = noteId(req);
+    const { visibility } = readBody(req.body, ['visibility']);
+    assertValid({ visibility: visibility === 'private' || visibility === 'friends' ? null : '可见性不正确' });
+    res.json({ data: await setNoteVisibility(req.user.id, id, visibility) });
   }),
 );
 

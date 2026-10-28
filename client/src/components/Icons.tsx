@@ -181,3 +181,24 @@ export const FilterIcon = ({ size = 16 }: IconProps) => (
     <path d="M4 5.5h16l-6.2 7.2v5.6l-3.6 1.7v-7.3z" />
   </svg>
 );
+
+export const FeedIcon = ({ size = 22 }: IconProps) => (
+  <svg {...base(size)}>
+    <rect x="4" y="4" width="16" height="16" rx="3" />
+    <path d="M7 12h3l2-4 2 8 2-4h1" />
+  </svg>
+);
+
+export const HeartIcon = ({ size = 18 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M20 5.5a5 5 0 0 0-7 0L12 6.6l-1-1.1a5 5 0 0 0-7 7L12 20l8-7.5a5 5 0 0 0 0-7Z" />
+  </svg>
+);
+
+export const LockIcon = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <rect x="5.5" y="10" width="13" height="10" rx="2" />
+    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    <path d="M12 14v2" />
+  </svg>
+);

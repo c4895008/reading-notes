@@ -13,6 +13,7 @@ import { KindBadge } from '../components/NoteKind';
 import NotesExplorer from '../components/NotesExplorer';
 import NoteTalkPanel from '../components/NoteTalkPanel';
 import NoteThread from '../components/NoteThread';
+import NoteVisibility from '../components/NoteVisibility';
 import InviteDialog, { type InviteTarget } from '../components/InviteDialog';
 import NotePicker from '../components/NotePicker';
 import TagEditor from '../components/TagEditor';
@@ -117,16 +118,23 @@ export default function NoteView() {
   const [busy, setBusy] = useState(false);
   const [inviting, setInviting] = useState(false);
   const refreshedTags = useRef<NoteTag[] | null>(null);
+  const visibilityRevision = useRef(0);
 
   useEffect(() => {
     const ctrl = new AbortController();
+    const revision = visibilityRevision.current;
     refreshedTags.current = null;
     setThread(null);
     setState((s) => (s.status === 'ready' && String(s.note.id) === id ? s : { status: 'loading' }));
     getNote(id, ctrl.signal)
       .then(async (note) => {
         if (ctrl.signal.aborted) return;
-        setState({ status: 'ready', note: { ...note, tags: refreshedTags.current ?? note.tags } });
+        setState((s) => {
+          if (visibilityRevision.current !== revision && (s.status !== 'ready' || s.note.id !== note.id)) return s;
+          const visibility = visibilityRevision.current !== revision && s.status === 'ready'
+            ? { visibility: s.note.visibility, shared_at: s.note.shared_at } : {};
+          return { status: 'ready', note: { ...note, ...visibility, tags: refreshedTags.current ?? note.tags } };
+        });
         saveLastViewed(note.id);
         expandNodes(userId, note.ancestors.map((a) => a.id));
         try {
@@ -347,6 +355,17 @@ export default function NoteView() {
                       </Link>
                     </p>
                   )}
+                  <NoteVisibility
+                    key={note.id}
+                    noteId={note.id}
+                    value={note}
+                    onChange={(value) => {
+                      visibilityRevision.current += 1;
+                      setState((s) => s.status === 'ready' && s.note.id === note.id
+                        ? { ...s, note: { ...s.note, ...value } } : s);
+                    }}
+                    onMissing={() => { visibilityRevision.current += 1; setState({ status: 'missing' }); }}
+                  />
                 </article>
 
                 <section className="reading-grow" aria-labelledby="grow-title">

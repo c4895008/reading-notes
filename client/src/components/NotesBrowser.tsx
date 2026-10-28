@@ -12,6 +12,7 @@ import {
   CheckCircleIcon,
   ChevronIcon,
   CommentIcon,
+  HeartIcon,
   ListIcon,
   PlusIcon,
   SearchIcon,
@@ -77,6 +78,12 @@ function NoteFoot({ note }: { note: NoteSummary }) {
         <span className="note-foot-stat">
           <CommentIcon />
           {note.message_count} 发言
+        </span>
+      )}
+      {note.like_count > 0 && (
+        <span className="note-foot-stat">
+          <HeartIcon size={14} />
+          {note.like_count.toLocaleString('en-US')} 个赞
         </span>
       )}
       {note.tags.map((t) => (

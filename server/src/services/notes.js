@@ -11,11 +11,11 @@ export const EXCERPT_LENGTH = 80;
 
 export const noteNotFound = () => new AppError(404, 'NOTE_NOT_FOUND', '无权访问或不存在');
 
-const DETAIL_COLUMNS = 'id, parent_id, title, quote, content, kind, created_at, updated_at';
+const DETAIL_COLUMNS = 'id, parent_id, title, quote, content, kind, visibility, shared_at, created_at, updated_at';
 
 const KIND_CODE = { viewpoint: 1, question: 2, summary: 3 };
 const KIND_NAME = { 1: 'viewpoint', 2: 'question', 3: 'summary' };
-const kindName = (code) => KIND_NAME[code] ?? null;
+export const kindName = (code) => KIND_NAME[code] ?? null;
 const kindCode = (name) => KIND_CODE[name] ?? null;
 
 const brief = (n) => ({ id: n.id, title: n.title });
@@ -94,7 +94,8 @@ export async function listNotes(userId, { q, page, pageSize, tag, kind, discussi
               LEFT(n.quote, ${EXCERPT_LENGTH * 4}) AS quote_head,
               CHAR_LENGTH(REGEXP_REPLACE(n.content_text, '[[:space:]]+', '')) AS content_length,
               n.created_at, n.updated_at, d.status AS discussion_status,
-              (SELECT COUNT(*) FROM message m WHERE m.discussion_id = d.id) AS message_count
+              (SELECT COUNT(*) FROM message m WHERE m.discussion_id = d.id) AS message_count,
+              (SELECT COUNT(*) FROM note_like nl WHERE nl.note_id = n.id) AS like_count
          FROM note n
          LEFT JOIN discussion d ON d.note_id = n.id
         WHERE ${where.join(' AND ')}
@@ -121,6 +122,7 @@ export async function listNotes(userId, { q, page, pageSize, tag, kind, discussi
         content_length: Number(row.content_length ?? 0),
         discussion_status: STATUS_NAME[row.discussion_status] ?? null,
         message_count: Number(row.message_count),
+        like_count: Number(row.like_count),
         tags: tagMap.get(row.id) ?? [],
         created_at: row.created_at,
         updated_at: row.updated_at,
@@ -168,12 +170,32 @@ export async function getNote(userId, id) {
     quote: row.quote,
     content: row.content,
     kind: kindName(row.kind),
+    visibility: row.visibility,
+    shared_at: row.shared_at,
     tags,
     created_at: row.created_at,
     updated_at: row.updated_at,
     ancestors: ancestors.map(brief),
     children: childrenOf(index, row.id).map((c) => ({ id: c.id, title: c.title, updated_at: c.updated_at })),
   };
+}
+
+export async function setNoteVisibility(userId, id, visibility) {
+  return withTransaction(async (conn) => {
+    const [[note]] = await conn.query(
+      `SELECT visibility, shared_at FROM note
+        WHERE id = ? AND user_id = ? AND status = ? FOR UPDATE`,
+      [id, userId, ACTIVE],
+    );
+    if (!note) throw noteNotFound();
+    if (note.visibility === visibility) return { visibility: note.visibility, shared_at: note.shared_at };
+
+    // 仅分享状态变化才设置/清空分享时间；不改内容编辑时间 updated_at。
+    const sharedAt = visibility === 'friends' ? 'CURRENT_TIMESTAMP(3)' : 'NULL';
+    await conn.query(`UPDATE note SET visibility = ?, shared_at = ${sharedAt} WHERE id = ?`, [visibility, id]);
+    const [[row]] = await conn.query('SELECT visibility, shared_at FROM note WHERE id = ?', [id]);
+    return { visibility: row.visibility, shared_at: row.shared_at };
+  });
 }
 
 // 在调用方事务内冻结笔记与祖先链（根 → 近）；锁作者行，避免快照与结构调整交错。非本人有效笔记返回 null

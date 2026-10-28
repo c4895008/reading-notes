@@ -5,6 +5,8 @@ import type { NoteTag } from './tags';
 export type NoteRef = { id: number; title: string };
 
 export type NoteKind = 'viewpoint' | 'question' | 'summary';
+export type NoteVisibility = 'private' | 'friends';
+export type VisibilityState = { visibility: NoteVisibility; shared_at: string | null };
 
 export type NoteSummary = {
   id: number;
@@ -19,6 +21,7 @@ export type NoteSummary = {
   content_length: number;
   discussion_status: TalkStatus | null;
   message_count: number;
+  like_count: number;
   tags: NoteTag[];
   created_at: string;
   updated_at: string;
@@ -26,7 +29,7 @@ export type NoteSummary = {
 
 export type NoteChild = NoteRef & { updated_at: string };
 
-export type Note = {
+export type Note = VisibilityState & {
   id: number;
   parent_id: number | null;
   title: string;
@@ -115,3 +118,6 @@ export const moveNote = (id: string | number, parentId: number | null) =>
 
 export const deleteNote = (id: string | number) =>
   request<{ promoted_children: number }>(notePath(id), { method: 'DELETE' });
+
+export const setNoteVisibility = (id: string | number, visibility: NoteVisibility, signal?: AbortSignal) =>
+  request<VisibilityState>(`${notePath(id)}/visibility`, { method: 'PUT', body: { visibility }, signal });

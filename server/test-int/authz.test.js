@@ -33,6 +33,11 @@ test('未登录：所有业务接口 401', async () => {
   for (const [m, p] of [
     ['GET', '/notes'],
     ['GET', `/notes/${bNote.id}`],
+    ['GET', '/feed'],
+    ['GET', `/feed/${bNote.id}`],
+    ['PUT', `/feed/${bNote.id}/like`],
+    ['DELETE', `/feed/${bNote.id}/like`],
+    ['PUT', `/notes/${bNote.id}/visibility`],
     ['GET', '/friends'],
     ['GET', '/discussions'],
     ['GET', `/discussions/${talk}`],
@@ -59,6 +64,58 @@ test('甲的 Token 操作乙的笔记：一律 404，无内容', async () => {
   assert.deepEqual(missing.body, (await api('GET', `/notes/${id}`, { token: a.token })).body);
   // 非法 id 也是 404
   assert.equal((await api('GET', '/notes/abc', { token: a.token })).status, 404);
+});
+
+test('共享只开放 feed：读友仍不能调用作者 notes 接口，讨论权限不变', async () => {
+  const own = await createNote(c, { title: 'qa_authz_读友自己的笔记' });
+  const uninvited = await register('qa_authz_share');
+  await befriend(b, uninvited);
+  const shared = await api('PUT', `/notes/${bNote.id}/visibility`, { token: b.token, body: { visibility: 'friends' } });
+  assert.equal(shared.status, 200, shared.text);
+  try {
+    for (const user of [c, uninvited]) {
+      const feed = await api('GET', `/feed/${bNote.id}`, { token: user.token });
+      assert.equal(feed.status, 200, feed.text);
+      assert.equal(feed.body.data.note.content, SECRET);
+    }
+    for (const user of [a, c, uninvited]) {
+      for (const [method, path, body] of [
+        ['GET', `/notes/${bNote.id}`],
+        ['PUT', `/notes/${bNote.id}`, { title: 'x', content: 'y' }],
+        ['POST', `/notes/${bNote.id}/promote`, { title: 'x', content: 'y' }],
+        ['PUT', `/notes/${bChild.id}/parent`, { parent_id: null }],
+        ['PUT', `/notes/${bNote.id}/tags`, { tag_ids: [] }],
+        ['PUT', `/notes/${bNote.id}/visibility`, { visibility: 'private' }],
+        ['DELETE', `/notes/${bNote.id}`],
+      ]) {
+        expectDenied(await api(method, path, { token: user.token, body }), 404, 'NOTE_NOT_FOUND');
+      }
+      for (const path of ['/notes', '/notes?view=tree', `/notes?q=${encodeURIComponent('秘密')}`]) {
+        const res = await api('GET', path, { token: user.token });
+        assert.equal(res.status, 200, res.text);
+        assert.ok(!leaks(res), '共享不应混入其他作者的私人笔记列表');
+      }
+    }
+    expectDenied(
+      await api('POST', '/notes', { token: c.token, body: { title: 'qa_非法补充', content: 'x', parent_id: bNote.id } }),
+      404,
+      'PARENT_NOT_FOUND',
+    );
+    expectDenied(await api('PUT', `/notes/${own.id}/parent`, { token: c.token, body: { parent_id: bNote.id } }), 404, 'PARENT_NOT_FOUND');
+    expectDenied(await api('POST', '/discussions', { token: c.token, body: { note_id: bNote.id } }), 403, 'NOTE_FORBIDDEN');
+    expectDenied(await api('GET', `/discussions/${talk}`, { token: a.token }), 404, 'DISCUSSION_NOT_FOUND');
+    expectDenied(await api('GET', `/discussions/${talk}`, { token: uninvited.token }), 404, 'DISCUSSION_NOT_FOUND');
+    expectDenied(await api('GET', `/discussions/${talk}/messages`, { token: uninvited.token }), 404, 'DISCUSSION_NOT_FOUND');
+    expectDenied(await send(uninvited, talk, 'qa_共享不是讨论邀请'), 404, 'DISCUSSION_NOT_FOUND');
+    const invited = await api('GET', `/discussions/${talk}/messages`, { token: c.token });
+    assert.equal(invited.status, 200, invited.text);
+    assert.equal(invited.body.data.messages.length, 1);
+    assert.ok(invited.text.includes(SECRET), '原受邀参与者仍可读讨论消息');
+  } finally {
+    const withdrawn = await api('PUT', `/notes/${bNote.id}/visibility`, { token: b.token, body: { visibility: 'private' } });
+    assert.equal(withdrawn.status, 200, withdrawn.text);
+  }
+  assert.equal((await api('GET', `/discussions/${talk}/messages`, { token: c.token })).status, 200);
 });
 
 test('甲不能把笔记挂到乙的笔记下，也不能就乙的笔记发起讨论', async () => {

@@ -6,6 +6,7 @@ import { refreshUnreadTalks, setUnreadTalks, useUnreadTalks } from '../lib/unrea
 import AvatarMenu from './AvatarMenu';
 import { ExplorerProvider } from './Explorer';
 import {
+  FeedIcon,
   FriendsIcon,
   GearIcon,
   LogoIcon,
@@ -21,6 +22,7 @@ const POLL_MS = 30_000;
 
 const PRIMARY_NAV = [
   { to: '/notes', label: '全部笔记', Icon: NoteIcon },
+  { to: '/feed', label: '好友动态', Icon: FeedIcon },
   { to: '/talks', label: '讨论', Icon: TalkIcon },
   { to: '/friends', label: '读友', Icon: FriendsIcon },
 ];
@@ -126,6 +128,10 @@ export default function AppShell() {
                 <span className="sidebar-link-icon"><NoteIcon size={19} /></span>
                 <span className="sidebar-link-label">全部笔记</span>
               </Link>
+              <NavLink to="/feed" className="sidebar-link" aria-label="好友动态" title="好友动态">
+                <span className="sidebar-link-icon"><FeedIcon size={19} /></span>
+                <span className="sidebar-link-label">好友动态</span>
+              </NavLink>
               <NavLink to="/talks" className="sidebar-link" aria-label={navAriaLabel('/talks', '讨论')} title="讨论">
                 <span className="sidebar-link-icon"><TalkIcon size={19} /></span>
                 <span className="sidebar-link-label">讨论</span>
