@@ -1,16 +1,25 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { MESSAGE_LIMIT, type Message } from '../api/discussions';
+import { useAuth } from '../auth/AuthContext';
 import Avatar from '../components/Avatar';
 import { BadgeRow } from '../components/Badge';
 import { clock, dayKey, dayLabel, fullTime } from '../lib/time';
+import '../components/NoteTalkPanel.css';
 
 export type Pending = { key: string; content: string; at: string; failed: string | null };
+
+export function mergeById(prev: Message[], fresh: Message[]) {
+  if (!fresh.length) return prev;
+  const byId = new Map(prev.map((m) => [m.id, m]));
+  for (const m of fresh) byId.set(m.id, m);
+  return [...byId.values()].sort((a, b) => a.id - b.id);
+}
 
 const URL_RE = /https?:\/\/[^\s<>"'\u3000-\u303f\uff00-\uffef]+/g;
 const TRAILING_PUNCT_RE = /[.,;:!?)\]}'"]+$/;
 
 // 纯文本渲染：React 负责转义，只把 http(s) 地址包成链接
-function MessageText({ text }: { text: string }) {
+export function MessageText({ text }: { text: string }) {
   const parts: ReactNode[] = [];
   let last = 0;
   for (const match of text.matchAll(URL_RE)) {
@@ -33,50 +42,45 @@ const itemAt = (it: Item) => (it.kind === 'message' ? it.message.created_at : it
 
 function MessageRow({ message: m }: { message: Message }) {
   return (
-    <li className={`msg${m.is_mine ? ' is-mine' : ''}`} data-message-id={m.id}>
-      {!m.is_mine && <Avatar avatar={m.sender.avatar} name={m.sender.nickname} size={32} decorative />}
-      <div className="msg-body">
-        <p className="msg-meta">
-          <span className="msg-name">{m.sender.nickname}</span>
-          {m.is_initiator && <span className="msg-badge">作者</span>}
-          <time dateTime={m.created_at} title={fullTime(m.created_at)}>
-            {clock(m.created_at)}
-          </time>
-          <span className="msg-seq">#{m.seq}</span>
-        </p>
-        {m.sender.badges.length > 0 && (
-          <div className="msg-badges">
-            <BadgeRow badges={m.sender.badges} />
-          </div>
-        )}
-        <div className="msg-bubble">
-          <MessageText text={m.content} />
-        </div>
+    <li className={`talk-card${m.is_mine ? ' is-mine' : ''}`} data-message-id={m.id}>
+      <div className="talk-card-head">
+        <Avatar avatar={m.sender.avatar} name={m.sender.nickname} size={24} decorative />
+        <span className="talk-card-name">{m.sender.nickname}</span>
+        {m.is_initiator && <span className="talk-card-badge">作者</span>}
+        <time className="talk-card-time" dateTime={m.created_at} title={fullTime(m.created_at)}>
+          {clock(m.created_at)}
+        </time>
+        <span className="talk-card-seq">#{m.seq}</span>
       </div>
+      {m.sender.badges.length > 0 && (
+        <div className="talk-card-badges">
+          <BadgeRow badges={m.sender.badges} />
+        </div>
+      )}
+      <MessageText text={m.content} />
     </li>
   );
 }
 
 function PendingRow({ pending: p, onRetry }: { pending: Pending; onRetry: (key: string) => void }) {
+  const { user } = useAuth();
   return (
-    <li className={`msg is-mine is-pending${p.failed ? ' is-failed' : ''}`}>
-      <div className="msg-body">
-        <p className="msg-meta">
-          {p.failed ? (
-            <span className="msg-failed" title={p.failed}>
-              未发送，
-              <button type="button" className="text-btn" onClick={() => onRetry(p.key)}>
-                重试
-              </button>
-            </span>
-          ) : (
-            <span>发送中…</span>
-          )}
-        </p>
-        <div className="msg-bubble">
-          <MessageText text={p.content} />
-        </div>
+    <li className={`talk-card is-mine is-pending${p.failed ? ' is-failed' : ''}`}>
+      <div className="talk-card-head">
+        {user && <Avatar avatar={user.avatar} name={user.nickname} size={24} decorative />}
+        <span className="talk-card-name">{user?.nickname}</span>
+        {p.failed ? (
+          <span className="talk-card-time is-failed" title={p.failed}>
+            未发送，
+            <button type="button" className="talk-card-retry" onClick={() => onRetry(p.key)}>
+              重试
+            </button>
+          </span>
+        ) : (
+          <span className="talk-card-time">发送中…</span>
+        )}
       </div>
+      <MessageText text={p.content} />
     </li>
   );
 }
@@ -130,7 +134,7 @@ export function Thread({ messages, pending, emptyText, onRetry, hasOlder, loadin
           )}
         </div>
       )}
-      <ol className="msg-list">{rows}</ol>
+      <ol className="talk-panel-cards">{rows}</ol>
     </section>
   );
 }
@@ -169,7 +173,7 @@ export function Composer({ onSend }: { onSend: (text: string) => void }) {
 
   return (
     <form
-      className="composer"
+      className="talk-panel-compose"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -181,22 +185,28 @@ export function Composer({ onSend }: { onSend: (text: string) => void }) {
       <textarea
         id="composer-input"
         ref={ref}
-        className="composer-input"
-        rows={1}
+        className="talk-panel-input"
+        rows={3}
         value={draft}
-        placeholder="写下你的想法，Enter 发送，Shift+Enter 换行"
+        placeholder="写下你的想法…"
         aria-describedby={length >= COUNTER_FROM ? 'composer-count' : undefined}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}
       />
-      {length >= COUNTER_FROM && (
-        <span id="composer-count" className={`composer-count${over ? ' is-over' : ''}`}>
-          {length} / {MESSAGE_LIMIT}
+      <div className="talk-panel-compose-row">
+        <span className="talk-panel-tip">
+          {length >= COUNTER_FROM ? (
+            <span id="composer-count" className={over ? 'is-over' : undefined}>
+              {length} / {MESSAGE_LIMIT}
+            </span>
+          ) : (
+            'Enter 发送，Shift+Enter 换行'
+          )}
         </span>
-      )}
-      <button type="submit" className="btn btn-primary composer-send" disabled={!canSend}>
-        发送
-      </button>
+        <button type="submit" className="talk-panel-send" disabled={!canSend}>
+          发送
+        </button>
+      </div>
     </form>
   );
 }

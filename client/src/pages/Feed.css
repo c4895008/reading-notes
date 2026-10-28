@@ -1,0 +1,276 @@
+.feed-body {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feed-card {
+  padding: 24px;
+  border: 1px solid var(--ui-line-2);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ui-ink);
+}
+
+.feed-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.feed-author-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-author-text strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.feed-author-text p {
+  margin-top: 3px;
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+.feed-mine {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--ui-fill-2);
+  color: var(--ui-muted);
+  font-size: 10px;
+  line-height: 18px;
+}
+
+.feed-title {
+  margin: 20px 0 14px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.45;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.feed-title a {
+  color: inherit;
+}
+
+.feed-title a:hover {
+  color: var(--brand);
+}
+
+.feed-card .quote-block {
+  margin: 16px 0;
+  border-left-color: var(--ui-line-6);
+  background: var(--ui-fill-1);
+  font-style: normal;
+}
+
+.feed-list .quote-block {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.feed-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  color: var(--ui-ink-soft);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.feed-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ui-line-1);
+}
+
+.feed-like-wrap {
+  min-width: 0;
+}
+
+.feed-like-wrap .field-msg {
+  display: block;
+  margin-top: 6px;
+}
+
+.feed-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-line-6);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--ui-ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 160ms var(--ease), background-color 160ms var(--ease);
+}
+
+.feed-like:hover:not(:disabled) {
+  background: var(--ui-fill-2);
+}
+
+.feed-like.is-liked {
+  border-color: var(--brand-line);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.feed-like.is-liked svg {
+  fill: currentColor;
+}
+
+.feed-like:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.feed-like-number {
+  min-width: 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-like-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+
+.feed-read {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  min-height: 34px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.feed-read:hover {
+  text-decoration: underline;
+}
+
+.feed-readonly {
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+.feed-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.feed-pagination > span {
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-pagination .btn {
+  gap: 4px;
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.feed-loading,
+.feed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 16px;
+  color: var(--ui-muted);
+  text-align: center;
+}
+
+.feed-empty h1,
+.feed-empty h2 {
+  color: var(--ui-ink);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.feed-empty p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.feed-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.feed-refresh-error {
+  margin-bottom: 14px;
+}
+
+.feed-full .reading-title {
+  margin: 24px 0;
+}
+
+@media (max-width: 600px) {
+  .feed-body {
+    padding: 18px 14px 32px;
+  }
+
+  .feed-card {
+    padding: 18px;
+    border-radius: 12px;
+  }
+
+  .feed-title {
+    font-size: 18px;
+  }
+
+  .feed .pane-title-sub {
+    display: none;
+  }
+
+  .feed-pagination > span {
+    font-size: 11px;
+  }
+
+  .feed-like {
+    min-height: 40px;
+  }
+}

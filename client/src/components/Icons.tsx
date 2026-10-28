@@ -27,18 +27,32 @@ export const NoteIcon = ({ size = 22 }: IconProps) => (
   </svg>
 );
 
+export const TreeIcon = ({ size = 22 }: IconProps) => (
+  <svg {...base(size)}>
+    <rect x="4" y="4" width="6" height="5" rx="1" />
+    <rect x="14" y="15" width="6" height="5" rx="1" />
+    <path d="M7 9v3.5h10V15M7 12.5V17h7" />
+  </svg>
+);
+
+export const ListIcon = ({ size = 18 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M8.5 5.5h11M8.5 12h11M8.5 18.5h11" />
+    <path d="M4 5.5h.01M4 12h.01M4 18.5h.01" />
+  </svg>
+);
+
+export const TagIcon = ({ size = 18 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M4 5.5V12l7.5 7.5 8-8L12 4H5.5A1.5 1.5 0 0 0 4 5.5Z" />
+    <circle cx="8.5" cy="8.5" r="1" />
+  </svg>
+);
+
 export const UserIcon = ({ size = 22 }: IconProps) => (
   <svg {...base(size)}>
     <circle cx="12" cy="8" r="3.5" />
     <path d="M5 19.5c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5" />
-  </svg>
-);
-
-export const PanelLeftIcon = ({ size = 18 }: IconProps) => (
-  <svg {...base(size)}>
-    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
-    <path d="M9.5 4.5v15" />
-    <path d="m14.5 9.5-2.5 2.5 2.5 2.5" />
   </svg>
 );
 
@@ -89,6 +103,25 @@ export const ChevronIcon = ({ size = 16 }: IconProps) => (
   </svg>
 );
 
+export const TextIcon = ({ size = 14 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M4.5 7h15M4.5 12h15M4.5 17h9" />
+  </svg>
+);
+
+export const CommentIcon = ({ size = 14 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5H4.5z" />
+  </svg>
+);
+
+export const CheckCircleIcon = ({ size = 14 }: IconProps) => (
+  <svg {...base(size)}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="m8.5 12.2 2.4 2.4 4.6-4.8" />
+  </svg>
+);
+
 export const RefineIcon = ({ size = 22 }: IconProps) => (
   <svg {...base(size)}>
     <path d="M5 4.5h14M12 20V9M7.5 13.5 12 9l4.5 4.5" />
@@ -126,5 +159,46 @@ export const PenIcon = ({ size = 16 }: IconProps) => (
   <svg {...base(size)}>
     <path d="M4.5 19.5 5.5 15 15.5 5a2.1 2.1 0 0 1 3 3l-10 10z" />
     <path d="m13.5 7 3 3" />
+  </svg>
+);
+
+export const MoreIcon = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <circle cx="12" cy="5.5" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="18.5" r="0.9" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const XIcon = ({ size = 14 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </svg>
+);
+
+export const FilterIcon = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M4 5.5h16l-6.2 7.2v5.6l-3.6 1.7v-7.3z" />
+  </svg>
+);
+
+export const FeedIcon = ({ size = 22 }: IconProps) => (
+  <svg {...base(size)}>
+    <rect x="4" y="4" width="16" height="16" rx="3" />
+    <path d="M7 12h3l2-4 2 8 2-4h1" />
+  </svg>
+);
+
+export const HeartIcon = ({ size = 18 }: IconProps) => (
+  <svg {...base(size)}>
+    <path d="M20 5.5a5 5 0 0 0-7 0L12 6.6l-1-1.1a5 5 0 0 0-7 7L12 20l8-7.5a5 5 0 0 0 0-7Z" />
+  </svg>
+);
+
+export const LockIcon = ({ size = 16 }: IconProps) => (
+  <svg {...base(size)}>
+    <rect x="5.5" y="10" width="13" height="10" rx="2" />
+    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    <path d="M12 14v2" />
   </svg>
 );

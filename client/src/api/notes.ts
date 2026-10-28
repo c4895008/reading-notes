@@ -1,29 +1,42 @@
 import { request } from './client';
 import type { TalkStatus, TalkSummary } from './discussions';
+import type { NoteTag } from './tags';
 
 export type NoteRef = { id: number; title: string };
+
+export type NoteKind = 'viewpoint' | 'question' | 'summary';
+export type NoteVisibility = 'private' | 'friends';
+export type VisibilityState = { visibility: NoteVisibility; shared_at: string | null };
 
 export type NoteSummary = {
   id: number;
   parent_id: number | null;
   title: string;
+  kind: NoteKind | null;
   excerpt: string;
   excerpt_source: 'content' | 'quote' | 'none';
   depth: number;
   path?: NoteRef[];
+  child_count: number;
+  content_length: number;
   discussion_status: TalkStatus | null;
+  message_count: number;
+  like_count: number;
+  tags: NoteTag[];
   created_at: string;
   updated_at: string;
 };
 
 export type NoteChild = NoteRef & { updated_at: string };
 
-export type Note = {
+export type Note = VisibilityState & {
   id: number;
   parent_id: number | null;
   title: string;
   quote: string | null;
   content: string;
+  kind: NoteKind | null;
+  tags: NoteTag[];
   created_at: string;
   updated_at: string;
   ancestors: NoteRef[];
@@ -40,17 +53,39 @@ export type TreeItem = {
   updated_at: string;
 };
 
-export type NoteInput = { title: string; quote: string | null; content: string };
+export type NoteInput = { title: string; quote: string | null; content: string; kind: NoteKind };
 
-export type NotePage = { items: NoteSummary[]; page: number; page_size: number; has_more: boolean };
+export type DiscussionFilter = 'active' | 'ended' | 'none';
+export type NoteSort = 'updated' | 'created';
+
+export type NoteQuery = {
+  q?: string;
+  page?: number;
+  tag?: number;
+  kind?: NoteKind;
+  discussion?: DiscussionFilter;
+  sort?: NoteSort;
+};
+
+export type NotePage = {
+  items: NoteSummary[];
+  page: number;
+  page_size: number;
+  total: number;
+  has_more: boolean;
+};
 
 export const NOTE_LIMITS = { title: 80, quote: 2000, content: 20000 } as const;
 
 const notePath = (id: string | number) => `/notes/${encodeURIComponent(id)}`;
 
-export function listNotes({ q, page }: { q?: string; page?: number }, signal?: AbortSignal) {
+export function listNotes({ q, page, tag, kind, discussion, sort }: NoteQuery, signal?: AbortSignal) {
   const params = new URLSearchParams({ view: 'list' });
   if (q) params.set('q', q);
+  if (tag) params.set('tag', String(tag));
+  if (kind) params.set('kind', kind);
+  if (discussion) params.set('discussion', discussion);
+  if (sort && sort !== 'updated') params.set('sort', sort);
   if (page && page > 1) params.set('page', String(page));
   return request<NotePage>(`/notes?${params}`, { signal });
 }
@@ -83,3 +118,6 @@ export const moveNote = (id: string | number, parentId: number | null) =>
 
 export const deleteNote = (id: string | number) =>
   request<{ promoted_children: number }>(notePath(id), { method: 'DELETE' });
+
+export const setNoteVisibility = (id: string | number, visibility: NoteVisibility, signal?: AbortSignal) =>
+  request<VisibilityState>(`${notePath(id)}/visibility`, { method: 'PUT', body: { visibility }, signal });

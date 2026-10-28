@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { getUnreadTalks } from '../api/discussions';
 
-// 笔谈导航徽标：有未读的进行中笔谈数；由外壳轮询，讨论页标记已读后主动刷新
+// 讨论导航徽标：有未读的进行中讨论数；由外壳轮询，讨论页标记已读后主动刷新
 let count = 0;
 const listeners = new Set<() => void>();
 

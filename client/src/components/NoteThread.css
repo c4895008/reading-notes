@@ -1,0 +1,141 @@
+/* 笔记链导图：一张大纲收起整条链，引导线从父级标题下方拐入子级 */
+.thread {
+  --step: 22px;
+  --elbow: 19px;
+  --wire: 1.5px solid var(--line-strong);
+  margin-top: 18px;
+  padding: 14px 14px 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.thread-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 10px 6px;
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-variant-numeric: tabular-nums;
+}
+
+.thread-label {
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.thread-tree,
+.thread-children {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thread-children {
+  padding-left: var(--step);
+}
+
+.thread-children > li {
+  position: relative;
+  padding-top: 2px;
+}
+
+.thread-children > li::before {
+  position: absolute;
+  top: 0;
+  left: calc(var(--step) / -2);
+  width: calc(var(--step) / 2 - 2px);
+  height: var(--elbow);
+  border-bottom: var(--wire);
+  border-left: var(--wire);
+  border-bottom-left-radius: 6px;
+  content: '';
+}
+
+.thread-children > li:not(:last-child)::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--step) / -2);
+  border-left: var(--wire);
+  content: '';
+}
+
+.thread-children.is-flat {
+  padding-left: 0;
+}
+
+.thread-children.is-flat > li::before,
+.thread-children.is-flat > li::after {
+  display: none;
+}
+
+.thread-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  transition: background-color 160ms var(--ease), color 160ms var(--ease);
+}
+
+a.thread-row:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.thread-row.is-current {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.thread-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-row time,
+.thread-here {
+  flex: none;
+  color: var(--faint);
+  font-size: var(--text-aux);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.thread-here {
+  color: var(--accent);
+}
+
+.thread-depth {
+  flex: none;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: var(--text-aux);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .thread {
+    --step: 16px;
+    padding: 10px 8px 8px;
+  }
+
+  .thread-row {
+    padding: 6px 8px;
+  }
+}

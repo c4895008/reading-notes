@@ -12,17 +12,27 @@ import {
   moveNote,
   noteNotFound,
   promoteNote,
+  setNoteVisibility,
   updateNote,
 } from '../services/notes.js';
-import { assertValid, charLength, parseNoteInput, readBody } from '../validate.js';
+import { findTag, setNoteTags, tagNotFound } from '../services/tags.js';
+import { NOTE_KINDS, assertValid, charLength, parseNoteInput, readBody } from '../validate.js';
 
 export const notesRouter = Router();
+notesRouter.use('/:id/visibility', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 notesRouter.use(requireAuth);
 
 const ID_RE = /^[1-9]\d{0,15}$/;
-const PAGE_SIZE = { default: 20, max: 50 };
+const PAGE_SIZE = { default: 10, max: 50 };
 const QUERY_MAX = 100;
-const NOTE_FIELDS = ['title', 'quote', 'content'];
+const NOTE_FIELDS = ['title', 'quote', 'content', 'kind'];
+const DISCUSSION_FILTERS = ['active', 'ended', 'none'];
+const SORTS = ['updated', 'created'];
+
+const optionalOf = (value, allowed) => (value === undefined || value === '' ? null : allowed.includes(value) ? value : NaN);
 
 function noteId(req) {
   const id = Number(req.params.id);
@@ -56,6 +66,9 @@ notesRouter.get(
     const page = positiveInt(req.query.page, 1);
     const pageSize = positiveInt(req.query.page_size, PAGE_SIZE.default);
     const query = typeof q === 'string' ? q.trim() : null;
+    const kind = optionalOf(req.query.kind, NOTE_KINDS);
+    const discussion = optionalOf(req.query.discussion, DISCUSSION_FILTERS);
+    const sort = optionalOf(req.query.sort, SORTS);
     assertValid({
       view: view === 'list' || view === 'tree' ? null : '不支持的视图',
       q:
@@ -68,12 +81,36 @@ notesRouter.get(
               : null,
       page: Number.isNaN(page) ? '页码不正确' : null,
       page_size: Number.isNaN(pageSize) || pageSize > PAGE_SIZE.max ? `每页 1–${PAGE_SIZE.max} 条` : null,
+      kind: Number.isNaN(kind) ? '分类不正确' : null,
+      discussion: Number.isNaN(discussion) ? '讨论状态不正确' : null,
+      sort: Number.isNaN(sort) ? '排序方式不正确' : null,
     });
     const userId = req.user.id;
-    const data = view === 'tree' ? await listTree(userId) : await listNotes(userId, { q: query, page, pageSize });
+    const data =
+      view === 'tree'
+        ? await listTree(userId)
+        : await listNotes(userId, {
+            q: query,
+            page,
+            pageSize,
+            tag: await ownedTagId(req),
+            kind,
+            discussion,
+            sort: sort ?? undefined,
+          });
     res.json({ data });
   }),
 );
+
+// tag 查询参数：必须是本人拥有的标签，否则按不存在处理
+async function ownedTagId(req) {
+  const raw = req.query.tag;
+  if (raw === undefined || raw === '') return undefined;
+  if (typeof raw !== 'string' || !/^[1-9]\d{0,15}$/.test(raw)) throw validationError({ tag: '标签不正确' });
+  const tag = await findTag(req.user.id, Number(raw));
+  if (!tag) throw tagNotFound();
+  return tag.id;
+}
 
 notesRouter.post(
   '/',
@@ -104,6 +141,30 @@ notesRouter.put(
     const id = noteId(req);
     const input = parseNoteInput(readBody(req.body, NOTE_FIELDS));
     res.json({ data: { note: await updateNote(req.user.id, id, input) } });
+  }),
+);
+
+notesRouter.put(
+  '/:id/visibility',
+  ah(async (req, res) => {
+    const id = noteId(req);
+    const { visibility } = readBody(req.body, ['visibility']);
+    assertValid({ visibility: visibility === 'private' || visibility === 'friends' ? null : '可见性不正确' });
+    res.json({ data: await setNoteVisibility(req.user.id, id, visibility) });
+  }),
+);
+
+notesRouter.put(
+  '/:id/tags',
+  ah(async (req, res) => {
+    const id = noteId(req);
+    const { tag_ids: raw } = readBody(req.body, ['tag_ids']);
+    if (!Array.isArray(raw) || raw.some((v) => !Number.isSafeInteger(v) || v <= 0)) {
+      throw validationError({ tag_ids: '标签列表格式不正确' });
+    }
+    if (raw.length > 20) throw validationError({ tag_ids: '一条笔记最多 20 个标签' });
+    const tags = await setNoteTags(req.user.id, id, [...new Set(raw)]);
+    res.json({ data: { tags } });
   }),
 );
 

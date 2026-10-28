@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { GuestOnly, RequireAuth } from './auth/guards';
 import AppShell from './components/AppShell';
 import Friends from './pages/Friends';
+import Feed from './pages/Feed';
+import FeedNote from './pages/FeedNote';
 import Login from './pages/Login';
 import NoteEditor, { NewNoteRoute } from './pages/NoteEditor';
 import NotesList from './pages/NotesList';
@@ -32,9 +34,12 @@ export const router = createBrowserRouter([
           { path: 'notes/new', element: <NewNoteRoute /> },
           { path: 'notes/:id', element: <NoteView /> },
           { path: 'notes/:id/edit', element: <NoteEditor key="edit" /> },
+          { path: 'tags', element: <Navigate to="/notes" replace /> },
           { path: 'talks', element: <Talks /> },
           { path: 'talks/:id', element: <Talk /> },
           { path: 'friends', element: <Friends /> },
+          { path: 'feed', element: <Feed /> },
+          { path: 'feed/:id', element: <FeedNote /> },
           { path: 'settings', element: <Settings /> },
           { path: '*', element: <NotFound /> },
         ],

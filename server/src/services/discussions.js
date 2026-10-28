@@ -29,9 +29,9 @@ const FRIEND_OF_INITIATOR = `EXISTS (
 // isEligible 的 SQL 等价式，用于列表与名单的批量过滤
 const ELIGIBLE = `(p.user_id = d.initiator_id OR ${FRIEND_OF_INITIATOR})`;
 
-const noteForbidden = () => new AppError(403, 'NOTE_FORBIDDEN', '只能就自己的笔记发起笔谈');
+const noteForbidden = () => new AppError(403, 'NOTE_FORBIDDEN', '只能就自己的笔记发起讨论');
 
-// 全部笔谈接口的统一入口：资格失效与不存在同为 404，不泄露存在性
+// 全部讨论接口的统一入口：资格失效与不存在同为 404，不泄露存在性
 export async function assertAccess(discussionId, userId, { conn = pool, lock = false } = {}) {
   const [rows] = await conn.query(
     `SELECT d.*, JSON_LENGTH(d.snapshot_ancestors) AS layers, p.id AS participant_id, p.last_read_at, ${FRIEND_OF_INITIATOR} AS is_friend
@@ -239,7 +239,7 @@ export async function markRead(meId, discussionId) {
   ]);
 }
 
-// 笔记阅读页的笔谈入口；只有作者本人会走到这里
+// 笔记阅读页的讨论入口；只有作者本人会走到这里
 export async function noteDiscussion(meId, noteId) {
   const [rows] = await pool.query(`SELECT ${BASE_COLS} FROM discussion d WHERE d.note_id = ? AND d.initiator_id = ?`, [noteId, meId]);
   if (!rows.length) return null;
@@ -247,7 +247,7 @@ export async function noteDiscussion(meId, noteId) {
   return summaryOf(rows[0], meId, roster.get(rows[0].id), activity.get(rows[0].id));
 }
 
-// 导航徽标：有未读的进行中笔谈数量
+// 导航徽标：有未读的进行中讨论数量
 export async function unreadDiscussionCount(meId) {
   const [[row]] = await pool.query(
     `SELECT COUNT(*) AS n
@@ -276,7 +276,7 @@ const messageOf = (r, d, meId) => ({
 
 export async function sendMessage(meId, discussionId, { content, clientMessageId }) {
   return withTransaction(async (conn) => {
-    // 锁笔谈行：同场发言串行化，楼层号连续；也与状态流转互斥
+    // 锁讨论行：同场发言串行化，楼层号连续；也与状态流转互斥
     const d = await assertAccess(discussionId, meId, { conn, lock: true });
     const findByClientId = () =>
       conn
@@ -286,7 +286,7 @@ export async function sendMessage(meId, discussionId, { content, clientMessageId
         ])
         .then(([rows]) => rows[0]);
 
-    // 重试先对账：已写入的同一条直接返回，即使笔谈随后被完结
+    // 重试先对账：已写入的同一条直接返回，即使讨论随后被完结
     const prior = await findByClientId();
     if (prior) {
       if (prior.sender_id !== meId) throw new AppError(409, 'CLIENT_ID_CONFLICT', '消息标识冲突，请重新发送');

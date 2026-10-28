@@ -18,7 +18,7 @@ type Props = {
   open: boolean;
   target: InviteTarget;
   onDone: (result: InviteResult) => void;
-  // 笔谈已存在、已完结、笔记已删除等需要页面整体处理的错误
+  // 讨论已存在、已完结、笔记已删除等需要页面整体处理的错误
   onFail: (error: ApiError) => void;
   onClose: () => void;
 };
@@ -158,14 +158,14 @@ export default function InviteDialog({ open, target, onDone, onFail, onClose }: 
       {open && (
         <div className="picker-body">
           <div className="picker-head">
-            <p className="invite-eyebrow">笔谈</p>
+            <p className="invite-eyebrow">讨论</p>
             <h2 id={titleId} className="confirm-title">
               {target.kind === 'start' ? `关于「${target.title}」` : '邀请更多读友'}
             </h2>
             <p className="picker-sub">
               {target.kind === 'start'
-                ? '围绕这条笔记，开启一场笔谈。受邀读友会在同一处讨论，相互可见。'
-                : `新加入的读友会看到「${target.title}」的这场笔谈，与大家同场讨论。`}
+                ? '围绕这条笔记，开启一场讨论。受邀读友会在同一处讨论，相互可见。'
+                : `新加入的读友会看到「${target.title}」的这场讨论，与大家同场讨论。`}
             </p>
             <p className="invite-scope">{scopeLine(target.layers)}</p>
             {candidates.length > 0 && (
@@ -197,7 +197,7 @@ export default function InviteDialog({ open, target, onDone, onFail, onClose }: 
             )}
             {state.status === 'ready' && candidates.length === 0 && (
               <div className="picker-state">
-                <p>{state.friends.length === 0 ? '还没有读友。先去添加一位读友。' : '你的读友都已在这场笔谈里了。'}</p>
+                <p>{state.friends.length === 0 ? '还没有读友。先去添加一位读友。' : '你的读友都已在这场讨论里了。'}</p>
                 <Link to="/friends" className="btn btn-ghost">
                   去添加读友
                 </Link>
@@ -248,7 +248,7 @@ export default function InviteDialog({ open, target, onDone, onFail, onClose }: 
                 取消
               </button>
               <button type="button" className="btn btn-primary" onClick={submit} disabled={busy || picked.size === 0}>
-                {busy ? '处理中…' : target.kind === 'start' ? '发起笔谈' : '邀请'}
+                {busy ? '处理中…' : target.kind === 'start' ? '发起讨论' : '邀请'}
               </button>
             </div>
           </div>

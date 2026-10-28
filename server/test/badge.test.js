@@ -46,7 +46,7 @@ test('发起人侧统计不计入读友侧徽章', () => {
   assert.deepEqual(earnedCodes({ initiated: 3, maxReaderSenders: 3 }), ['kindler', 'fullhouse']);
 });
 
-test('evaluationPlan：发起笔谈只评估发起人的东道', () => {
+test('evaluationPlan：发起讨论只评估发起人的东道', () => {
   assert.deepEqual(evaluationPlan({ type: 'discussion_created', initiatorId: 1 }), [{ userId: 1, codes: ['kindler'] }]);
 });
 
@@ -57,7 +57,7 @@ test('evaluationPlan：读友发言评估发送者的破冰/同席，与发起�
   ]);
 });
 
-test('evaluationPlan：发起人在自己的笔谈里发言不触发任何评估', () => {
+test('evaluationPlan：发起人在自己的讨论里发言不触发任何评估', () => {
   assert.deepEqual(evaluationPlan({ type: 'message_sent', senderId: 1, initiatorId: 1 }), []);
 });
 

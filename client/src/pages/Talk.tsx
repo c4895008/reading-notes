@@ -22,7 +22,7 @@ import Avatar from '../components/Avatar';
 import AvatarGroup from '../components/AvatarGroup';
 import { useExplorerContent } from '../components/Explorer';
 import TalksExplorer from '../components/TalksExplorer';
-import { BackIcon, ChevronIcon, PlusIcon } from '../components/Icons';
+import { BackIcon, ChevronIcon, PlusIcon, TalkIcon } from '../components/Icons';
 import InviteDialog from '../components/InviteDialog';
 import { NoteBody, QuoteBlock } from '../components/NoteContent';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -31,7 +31,7 @@ import { useBadgeToast, useToast } from '../components/Toast';
 import { randomKey } from '../lib/id';
 import { formatDate, fullTime } from '../lib/time';
 import { refreshUnreadTalks } from '../lib/unreadTalks';
-import { Composer, Thread, type Pending } from './TalkThread';
+import { Composer, mergeById, Thread, type Pending } from './TalkThread';
 import { ReadingSkeleton } from './NoteView';
 import './Page.css';
 import './Notes.css';
@@ -57,21 +57,14 @@ async function fetchSince(talkId: string | number, afterId: number, signal?: Abo
   }
 }
 
-function mergeById(prev: Message[], fresh: Message[]) {
-  if (!fresh.length) return prev;
-  const byId = new Map(prev.map((m) => [m.id, m]));
-  for (const m of fresh) byId.set(m.id, m);
-  return [...byId.values()].sort((a, b) => a.id - b.id);
-}
-
 type Op = { action: TransitionAction; label: string; confirm?: { title: string; message: string } };
 
 const OPS: Record<TalkStatus, Op[]> = {
   active: [
     {
       action: 'end',
-      label: '完结笔谈',
-      confirm: { title: '完结这场笔谈？', message: '完结后所有人都不能再发言，笔谈会完整保留。确定完结这场笔谈？' },
+      label: '完结讨论',
+      confirm: { title: '完结这场讨论？', message: '完结后所有人都不能再发言，讨论会完整保留。确定完结这场讨论？' },
     },
   ],
   ended: [
@@ -79,22 +72,22 @@ const OPS: Record<TalkStatus, Op[]> = {
     {
       action: 'archive',
       label: '存档',
-      confirm: { title: '存档这场笔谈？', message: '存档后它会从默认列表收起，可在「已存档」里找到，随时可以取消存档。' },
+      confirm: { title: '存档这场讨论？', message: '存档后它会从默认列表收起，可在「已存档」里找到，随时可以取消存档。' },
     },
   ],
   archived: [{ action: 'unarchive', label: '取消存档' }],
 };
 
 const OP_DONE: Record<TransitionAction, string> = {
-  end: '笔谈已完结',
-  reopen: '笔谈已重新开启',
-  archive: '笔谈已存档',
+  end: '讨论已完结',
+  reopen: '讨论已重新开启',
+  archive: '讨论已存档',
   unarchive: '已取消存档',
 };
 
 const READONLY_TEXT: Record<Exclude<TalkStatus, 'active'>, string> = {
-  ended: '这场笔谈已完结，仅可回看。',
-  archived: '这场笔谈已存档。',
+  ended: '这场讨论已完结，仅可回看。',
+  archived: '这场讨论已存档。',
 };
 
 function TalkMissing() {
@@ -104,7 +97,7 @@ function TalkMissing() {
         <p className="nf-mark">404</p>
         <h1 className="page-title">无权访问或不存在。</h1>
         <Link to="/talks" className="btn btn-primary">
-          回到笔谈列表
+          回到讨论列表
         </Link>
       </div>
     </div>
@@ -116,7 +109,7 @@ function Roster({ people }: { people: Participant[] }) {
     <ul className="talk-roster" aria-label="参与者名单">
       {people.map((p) => (
         <li key={p.user_id} className="person">
-          <Avatar avatar={p.avatar} name={p.nickname} size={40} decorative />
+          <Avatar avatar={p.avatar} name={p.nickname} size={32} decorative />
           <div className="person-who">
             <span className="person-name">
               {p.nickname}
@@ -158,7 +151,7 @@ function CitationDesk({ talk }: { talk: TalkData }) {
       <div id="desk-body" className="desk-body" hidden={!open}>
         {snapshot.ancestors.length > 0 && (
           <div className="desk-ancestors">
-            <p className="desk-label">随这场笔谈共享的上层提炼</p>
+            <p className="desk-label">随这场讨论共享的上层提炼</p>
             {snapshot.ancestors.map((a, i) => (
               <details key={i} className="desk-ancestor">
                 <summary>
@@ -175,11 +168,6 @@ function CitationDesk({ talk }: { talk: TalkData }) {
         <article className="desk-note">
           <h3 className="desk-title">{snapshot.title}</h3>
           <SnapshotContent part={snapshot} />
-          <p className="desk-anchor">
-            <time dateTime={snapshot.captured_at} title={fullTime(snapshot.captured_at)}>
-              锚定于 {formatDate(snapshot.captured_at)} 的版本
-            </time>
-          </p>
         </article>
       </div>
     </section>
@@ -190,7 +178,7 @@ export default function Talk() {
   const { id = '' } = useParams();
   const location = useLocation();
   const back = (location.state as { back?: string } | null)?.back ?? '/talks';
-  const backLabel = back.startsWith('/notes') ? '笔记' : '笔谈';
+  const backLabel = back.startsWith('/notes') ? '笔记' : '讨论';
   const toast = useToast();
   const badgeToast = useBadgeToast();
   const talkIdNum = /^\d+$/.test(id) ? Number(id) : null;
@@ -291,7 +279,7 @@ export default function Talk() {
 
       const joined = page.participants.filter((p) => !knownPeople.current.has(p.user_id));
       knownPeople.current = new Set(page.participants.map((p) => p.user_id));
-      if (joined.length) toast(`${joined.length} 位读友加入了笔谈。`);
+      if (joined.length) toast(`${joined.length} 位读友加入了讨论。`);
 
       const fromOthers = page.messages.filter((m) => !m.is_mine);
       if (fromOthers.length) {
@@ -435,7 +423,7 @@ export default function Talk() {
 
   function invited(result: InviteResult) {
     setInviting(false);
-    toast(`已邀请 ${result.invited.length} 位读友加入笔谈`);
+    toast(`已邀请 ${result.invited.length} 位读友加入讨论`);
     setReload((r) => r + 1);
   }
 
@@ -449,93 +437,109 @@ export default function Talk() {
   const readonlyText = lost ? '你已不在这次讨论中。' : talk && talk.status !== 'active' ? READONLY_TEXT[talk.status] : null;
 
   return (
-    <div className="page page-enter talk-page">
-      {state.status === 'loading' && (
-        <div className="talk-single">
-          <ReadingSkeleton />
-        </div>
-      )}
-      {state.status === 'error' && (
-        <div className="talk-single">
-          <div className="notes-state" role="alert">
-            <p>{state.message}</p>
-            <button type="button" className="btn btn-ghost" onClick={() => setReload((n) => n + 1)}>
-              重试
-            </button>
-          </div>
-        </div>
-      )}
-
-      {talk && (
-        <div className="talk-layout">
-          <div className="talk-note">
-            <div className="reading-bar">
+    <div className="page page-enter pane-page talk-page">
+      <div className={`talk-layout${talk ? ' has-chat' : ''}`}>
+        <div className="talk-note">
+          <div className="pane-bar">
+            <nav className="reading-location" aria-label="讨论路径">
               <Link to={back} className="back-link">
                 <BackIcon />
                 {backLabel}
               </Link>
-            </div>
-
-            <header className="talk-head">
-              <h1 className="talk-title">关于『{talk.title}』</h1>
-              <div className="talk-head-row">
-                <button
-                  type="button"
-                  className="talk-people"
-                  aria-expanded={rosterOpen}
-                  aria-controls="talk-roster"
-                  aria-label={`参与者名单（${talk.participants.length} 位）`}
-                  onClick={() => setRosterOpen((o) => !o)}
-                >
-                  <AvatarGroup users={talk.participants} max={5} size={32} />
-                  <span className="talk-people-count">{talk.participants.length} 位参与者</span>
-                  <span className="talk-people-chev" aria-hidden="true">
-                    <ChevronIcon />
+              {talk && (
+                <>
+                  <span className="reading-location-divider" aria-hidden="true">
+                    /
                   </span>
-                </button>
-                {talk.is_initiator && (
-                  <div className="talk-actions">
-                    {talk.status === 'active' && (
-                      <button type="button" className="btn btn-ghost" onClick={() => setInviting(true)}>
-                        <PlusIcon />
-                        邀请更多读友
-                      </button>
-                    )}
-                    {OPS[talk.status].map((op) => (
-                      <button key={op.action} type="button" className="btn btn-ghost" disabled={opBusy} onClick={() => (op.confirm ? setConfirmOp(op) : runOp(op))}>
-                        {op.label}
-                      </button>
-                    ))}
-                  </div>
+                  <span className="reading-location-current" aria-current="page" title={talk.title}>
+                    关于『{talk.title}』
+                  </span>
+                </>
+              )}
+            </nav>
+            {talk?.is_initiator && (
+              <div className="pane-bar-actions">
+                {talk.status === 'active' && (
+                  <button type="button" className="btn btn-ghost" onClick={() => setInviting(true)}>
+                    <PlusIcon size={14} />
+                    邀请更多读友
+                  </button>
                 )}
+                {OPS[talk.status].map((op) => (
+                  <button key={op.action} type="button" className="btn btn-ghost" disabled={opBusy} onClick={() => (op.confirm ? setConfirmOp(op) : runOp(op))}>
+                    {op.label}
+                  </button>
+                ))}
               </div>
-              <div id="talk-roster" hidden={!rosterOpen}>
-                <Roster people={talk.participants} />
-              </div>
-            </header>
-
-            <CitationDesk talk={talk} />
-
-            {talk.note_has_newer_version && (
-              <p className="talk-hint is-weak">笔记已有新版本，本场笔谈基于 {formatDate(talk.snapshot.captured_at)} 的版本</p>
             )}
-
-            {welcome && <p className="talk-hint">你被邀请参与这场笔谈。笔记与它的上层脉络就在一旁，大家聊到懂为止。</p>}
           </div>
 
+          <div className="talk-canvas">
+            {state.status === 'loading' && <ReadingSkeleton />}
+            {state.status === 'error' && (
+              <div className="notes-state" role="alert">
+                <p>{state.message}</p>
+                <button type="button" className="btn btn-ghost" onClick={() => setReload((n) => n + 1)}>
+                  重试
+                </button>
+              </div>
+            )}
+
+            {talk && (
+              <>
+                <header className="talk-head">
+                  <div className="talk-topmeta">
+                    <span className={`talk-tag${talk.status === 'active' ? ' is-live' : ''}`}>{STATUS_LABEL[talk.status]}</span>
+                    <button
+                      type="button"
+                      className="talk-people"
+                      aria-expanded={rosterOpen}
+                      aria-controls="talk-roster"
+                      aria-label={`参与者名单（${talk.participants.length} 位）`}
+                      onClick={() => setRosterOpen((o) => !o)}
+                    >
+                      <AvatarGroup users={talk.participants} max={5} size={24} />
+                      <span>{talk.participants.length} 位参与者</span>
+                      <span className="talk-people-chev" aria-hidden="true">
+                        <ChevronIcon size={14} />
+                      </span>
+                    </button>
+                    <time className="talk-anchor" dateTime={talk.snapshot.captured_at} title={fullTime(talk.snapshot.captured_at)}>
+                      锚定于 {formatDate(talk.snapshot.captured_at)}
+                    </time>
+                  </div>
+                  <h1 className="talk-title">关于『{talk.title}』</h1>
+                  <div id="talk-roster" hidden={!rosterOpen}>
+                    <Roster people={talk.participants} />
+                  </div>
+                </header>
+
+                {welcome && <p className="talk-hint">你被邀请参与这场讨论。笔记与它的上层脉络就在一旁，大家聊到懂为止。</p>}
+                {talk.note_has_newer_version && (
+                  <p className="talk-hint is-weak">笔记已有新版本，本场讨论基于 {formatDate(talk.snapshot.captured_at)} 的版本</p>
+                )}
+
+                <CitationDesk talk={talk} />
+              </>
+            )}
+          </div>
+        </div>
+
+        {talk && (
           <aside className="chat-panel" aria-label="讨论">
             <header className="chat-head">
-              <span className="chat-eyebrow">讨论</span>
-              <span className="chat-head-side">
-                {talk.status !== 'active' && <span className="pill">{STATUS_LABEL[talk.status]}</span>}
-                <span className="chat-count">{talk.participants.length} 位参与者</span>
-              </span>
+              <h2 className="chat-title">
+                <TalkIcon size={16} />
+                讨论
+              </h2>
+              {talk.status !== 'active' && <span className="talk-tag">{STATUS_LABEL[talk.status]}</span>}
+              <span className="chat-count">{talk.participants.length} 人</span>
             </header>
             <div className="chat-scroll" ref={scrollRef}>
               <Thread
                 messages={messages}
                 pending={pending}
-                emptyText={talk.status === 'active' && !lost ? '笔谈已开始。从你此刻最真实的想法写起。' : '这场笔谈里还没有人发言。'}
+                emptyText={talk.status === 'active' && !lost ? '讨论已开始。从你此刻最真实的想法写起。' : '这场讨论里还没有人发言。'}
                 onRetry={retry}
                 hasOlder={hasOlder}
                 loadingOlder={loadingOlder}
@@ -565,35 +569,35 @@ export default function Talk() {
               )}
             </div>
           </aside>
+        )}
 
-          {talk.is_initiator && (
-            <InviteDialog
-              open={inviting}
-              target={{
-                kind: 'invite',
-                talkId: talk.id,
-                title: talk.title,
-                layers: talk.layers,
-                exclude: talk.participants.map((p) => p.user_id),
-              }}
-              onDone={invited}
-              onFail={inviteFailed}
-              onClose={() => setInviting(false)}
-            />
-          )}
-
-          <ConfirmDialog
-            open={confirmOp !== null}
-            title={confirmOp?.confirm?.title ?? ''}
-            message={confirmOp?.confirm?.message}
-            confirmLabel={confirmOp?.label ?? ''}
-            busy={opBusy}
-            danger={confirmOp?.action === 'end'}
-            onConfirm={() => confirmOp && runOp(confirmOp)}
-            onCancel={() => setConfirmOp(null)}
+        {talk?.is_initiator && (
+          <InviteDialog
+            open={inviting}
+            target={{
+              kind: 'invite',
+              talkId: talk.id,
+              title: talk.title,
+              layers: talk.layers,
+              exclude: talk.participants.map((p) => p.user_id),
+            }}
+            onDone={invited}
+            onFail={inviteFailed}
+            onClose={() => setInviting(false)}
           />
-        </div>
-      )}
+        )}
+
+        <ConfirmDialog
+          open={confirmOp !== null}
+          title={confirmOp?.confirm?.title ?? ''}
+          message={confirmOp?.confirm?.message}
+          confirmLabel={confirmOp?.label ?? ''}
+          busy={opBusy}
+          danger={confirmOp?.action === 'end'}
+          onConfirm={() => confirmOp && runOp(confirmOp)}
+          onCancel={() => setConfirmOp(null)}
+        />
+      </div>
     </div>
   );
 }

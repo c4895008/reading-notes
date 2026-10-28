@@ -6,16 +6,34 @@ import './AuthPage.css';
 export function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer: ReactNode }) {
   return (
     <main className="auth">
-      <div className="auth-card page-enter">
+      <section className="auth-story" aria-label="产品介绍">
         <Link to="/login" className="auth-brand">
-          <LogoIcon size={22} />
+          <span className="auth-brand-icon"><LogoIcon size={20} /></span>
           读书笔记
         </Link>
-        <h1 className="auth-title">{title}</h1>
-        <p className="auth-subtitle">{subtitle}</p>
-        {children}
-        <p className="auth-footer">{footer}</p>
-      </div>
+        <div className="auth-story-copy">
+          <p className="auth-eyebrow">结构化阅读与思考</p>
+          <h2>把读过的内容，变成可以继续生长的理解。</h2>
+          <p>记录引文，梳理上下层关系，再邀请读友围绕一条具体笔记展开讨论。</p>
+          <ul className="auth-features">
+            <li><strong>01</strong><span>从引文与想法开始</span></li>
+            <li><strong>02</strong><span>让笔记形成清晰脉络</span></li>
+            <li><strong>03</strong><span>和读友把问题谈深</span></li>
+          </ul>
+        </div>
+      </section>
+      <section className="auth-panel">
+        <div className="auth-card page-enter">
+          <Link to="/login" className="auth-brand auth-brand-mobile">
+            <span className="auth-brand-icon"><LogoIcon size={20} /></span>
+            读书笔记
+          </Link>
+          <h1 className="auth-title">{title}</h1>
+          <p className="auth-subtitle">{subtitle}</p>
+          {children}
+          <p className="auth-footer">{footer}</p>
+        </div>
+      </section>
     </main>
   );
 }

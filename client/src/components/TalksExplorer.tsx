@@ -59,7 +59,7 @@ export default function TalksExplorer({ currentId = null }: { currentId?: number
   return (
     <div className="ext">
       <div className="ext-head">
-        <span className="ext-title">笔谈</span>
+        <span className="ext-title">讨论</span>
       </div>
 
       {state.status === 'loading' && <Skeleton />}
@@ -75,7 +75,7 @@ export default function TalksExplorer({ currentId = null }: { currentId?: number
 
       {state.status === 'ready' && state.items.length === 0 && (
         <div className="ext-state">
-          <p>没有进行中的笔谈。</p>
+          <p>没有进行中的讨论。</p>
           <Link to="/notes" className="text-btn">
             从一条笔记发起
           </Link>
@@ -120,7 +120,7 @@ export default function TalksExplorer({ currentId = null }: { currentId?: number
 
       {state.status === 'ready' && state.hasMore && (
         <Link to="/talks" className="ext-more">
-          全部笔谈
+          全部讨论
           <ChevronIcon size={14} />
         </Link>
       )}

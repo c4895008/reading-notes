@@ -8,10 +8,10 @@ type Info = { name: string; imagery: string; condition: string };
 
 // 与服务端目录（services/badge.js）一致；名称与条件在产品内固定
 export const BADGE_INFO: Record<string, Info> = {
-  icebreaker: { name: '破冰', imagery: '冰晶绽开', condition: '首次在笔谈中发送消息（读友侧）' },
-  companion: { name: '同席', imagery: '并坐', condition: '在 3 场不同的笔谈中都发送过消息（读友侧）' },
-  kindler: { name: '东道', imagery: '请帖', condition: '首次发起笔谈（发起人侧）' },
-  fullhouse: { name: '满座', imagery: '齐聚', condition: '发起的某场笔谈中，有 ≥ 3 位读友各发送过消息（发起人侧）' },
+  icebreaker: { name: '破冰', imagery: '冰晶绽开', condition: '首次在讨论中发送消息（读友侧）' },
+  companion: { name: '同席', imagery: '并坐', condition: '在 3 场不同的讨论中都发送过消息（读友侧）' },
+  kindler: { name: '东道', imagery: '请帖', condition: '首次发起讨论（发起人侧）' },
+  fullhouse: { name: '满座', imagery: '齐聚', condition: '发起的某场讨论中，有 ≥ 3 位读友各发送过消息（发起人侧）' },
 };
 
 const svg = (size: number) => ({

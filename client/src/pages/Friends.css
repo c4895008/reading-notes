@@ -1,82 +1,19 @@
-.friends-section {
-  margin-top: 36px;
-}
-
-.friends-heading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink-soft);
-  font-family: var(--font-sans);
-  font-size: var(--text-ui);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.friends-count {
-  color: var(--faint);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-}
-
-.friends-search-block .notes-search {
-  margin-top: 14px;
-}
-
-.search-results {
-  margin-top: 8px;
-}
-
-.friends-note {
-  padding: 16px 0 4px;
-  color: var(--muted);
-  font-size: var(--text-ui-sm);
-}
-
-.friends-note.is-error {
-  color: var(--danger);
-}
-
-.friends-empty {
-  margin-top: 14px;
-  padding: 28px 24px;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  line-height: var(--leading-body);
-}
-
+/* Person 基础结构也用于讨论页参与者名单 */
 .people {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 12px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.friends-more {
-  display: flex;
-  justify-content: center;
-  padding-top: 6px;
 }
 
 .person {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 64px;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  gap: 12px;
+  min-width: 0;
 }
 
 .person > .avatar {
-  flex-shrink: 0;
+  flex: none;
 }
 
 .person-who {
@@ -87,41 +24,102 @@
   min-width: 0;
 }
 
-.person-name {
+.person-name,
+.person-sub {
   overflow: hidden;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.person-name {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .person-sub {
-  overflow: hidden;
   color: var(--muted);
-  font-size: var(--text-aux);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px;
 }
 
 .person-actions {
   display: flex;
-  flex-shrink: 0;
+  flex: none;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.btn-compact {
-  min-height: var(--touch);
-  padding: 0 16px;
-  font-size: var(--text-ui-sm);
+.page.friends {
+  min-height: 100%;
+  background: var(--paper);
 }
 
-.relation-tag {
-  color: var(--faint);
-  font-size: var(--text-ui-sm);
-  white-space: nowrap;
+.friends-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100%;
+}
+
+.friends-main {
+  min-width: 0;
+  background: var(--surface);
+}
+
+.friends-main-body {
+  width: min(100%, calc(var(--reader-width) + 96px));
+  margin: 0 auto;
+  padding: 28px clamp(18px, 5cqi, 48px) 64px;
+}
+
+.friends-main .friends-section {
+  margin: 0;
+}
+
+.friends-main .friends-heading {
+  min-height: 32px;
+  color: var(--ink);
+}
+
+.friends-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.friends-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.friends-main .people {
+  border-top: 1px solid var(--line);
+}
+
+.friends-main .person {
+  min-height: 56px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.friends-main .person-actions .text-btn {
+  min-height: 30px;
+  padding: 0 6px;
+  font-size: 12px;
 }
 
 .text-btn.is-weak {
@@ -137,30 +135,180 @@
   cursor: not-allowed;
 }
 
+.friends-empty {
+  margin-top: 8px;
+  padding: 40px 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.friends-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 14px;
+}
+
+.btn-compact {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+}
+
+.relation-tag {
+  color: var(--faint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .person.is-skeleton {
-  min-height: 64px;
+  min-height: 56px;
 }
 
 .person.is-skeleton .person-who {
-  gap: 8px;
+  gap: 7px;
 }
 
 .sk-avatar {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
 }
 
+/* 右侧搜索与申请栏 */
+.friends-side {
+  order: -1;
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.friends-side .friends-section {
+  padding: 0 16px 18px;
+}
+
+.friends-side .friends-section + .friends-section {
+  border-top: 1px solid var(--line);
+}
+
+.friends-side .friends-heading {
+  min-height: 48px;
+  color: var(--ink);
+}
+
+.friends-search-block .notes-search {
+  margin-top: 0;
+}
+
+.page.friends .notes-search-input {
+  min-height: 36px;
+  padding-left: 36px;
+  border-color: transparent;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+.page.friends .notes-search svg {
+  left: 11px;
+  width: 15px;
+  height: 15px;
+}
+
+.search-results {
+  margin-top: 10px;
+}
+
+.friends-side .people {
+  display: grid;
+  gap: 8px;
+}
+
+.friends-side .person {
+  min-height: 50px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.friends-side .person-name {
+  font-size: 12px;
+}
+
+.friends-side .person-sub {
+  font-size: 10px;
+}
+
+.friends-side .badge-row {
+  margin-top: 2px;
+}
+
+.friends-side .person-actions {
+  gap: 4px;
+}
+
+.friends-side .person-actions .text-btn {
+  min-height: 28px;
+  padding: 0 3px;
+  font-size: 11px;
+}
+
+.friends-side .friends-more {
+  padding-top: 10px;
+}
+
+.friends-side .friends-more .btn {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.friends-note {
+  padding: 12px 2px 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.friends-note.is-error {
+  color: var(--danger);
+}
+
+@container (min-width: 900px) {
+  .friends-workspace {
+    grid-template-columns: minmax(0, 1fr) var(--discussion-width);
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .friends-side {
+    position: sticky;
+    top: 0;
+    order: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-bottom: 0;
+    border-left: 1px solid var(--line);
+  }
+}
+
 @media (max-width: 420px) {
-  .person {
-    gap: 12px;
+  .friends-main-body {
+    padding: 22px 14px 40px;
   }
 
-  .person-actions {
-    gap: 4px;
-  }
-
-  .btn-compact {
-    padding: 0 12px;
+  .friends-side .friends-section {
+    padding-right: 14px;
+    padding-left: 14px;
   }
 }

@@ -42,7 +42,7 @@ export default function Login() {
   return (
     <AuthLayout
       title="登录"
-      subtitle="回到你的笔记与笔谈。"
+      subtitle="回到你的笔记与讨论。"
       footer={
         <>
           还没有账号？

@@ -24,7 +24,7 @@ const start = async (invitees = [r1.id], note) => {
 const transition = (user, id, action) => api('POST', `/discussions/${id}/transition`, { token: user.token, body: { action } });
 const count = async (sql, args) => Number((await db().query(sql, args))[0][0].n);
 
-test('同一笔记重复发起：409 DISCUSSION_EXISTS 并带回已有笔谈 id', async () => {
+test('同一笔记重复发起：409 DISCUSSION_EXISTS 并带回已有讨论 id', async () => {
   const { id, note } = await start();
   const dup = await api('POST', '/discussions', { token: host.token, body: { note_id: note.id } });
   assert.equal(dup.status, 409);
@@ -42,7 +42,7 @@ test('并发重复发起：恰好一场成功，其余 409', async () => {
   assert.equal(await count('SELECT COUNT(*) AS n FROM discussion WHERE note_id = ?', [note.id]), 1);
 });
 
-test('邀请含非读友：整单 403 且事务回滚，不留下笔谈', async () => {
+test('邀请含非读友：整单 403 且事务回滚，不留下讨论', async () => {
   const note = await createNote(host, { title: '回滚', content: 'x' });
   const res = await api('POST', '/discussions', { token: host.token, body: { note_id: note.id, invitee_ids: [r1.id, stranger.id] } });
   assert.equal(res.status, 403);
@@ -93,7 +93,7 @@ test('完结/存档后不能发言；重开后恢复', async () => {
   assert.equal(ended.status, 409);
   assert.equal(ended.body.error.code, 'DISCUSSION_NOT_ACTIVE');
   await transition(host, id, 'archive');
-  assert.equal((await send(host, id, '存档后')).body.error.message, '这场笔谈已存档');
+  assert.equal((await send(host, id, '存档后')).body.error.message, '这场讨论已存档');
   await transition(host, id, 'unarchive');
   await transition(host, id, 'reopen');
   assert.equal((await send(r1, id, '重开后')).status, 201);
@@ -192,7 +192,7 @@ test('未读：他人消息计入，已读后清零，完结即清零；导航�
   assert.ok(ended.counts.ended >= 1);
 });
 
-test('删除原笔记：子笔记升为顶层，笔谈与快照照常可用', async () => {
+test('删除原笔记：子笔记升为顶层，讨论与快照照常可用', async () => {
   const parent = await createNote(host, { title: '父', quote: '父的引文', content: '父的正文' });
   const child = await createNote(host, { title: '子', content: '子的正文', parent_id: parent.id });
   const { id } = await start([r1.id], child);
@@ -248,7 +248,7 @@ test('徽章：幂等写入，重放不重复，公开形状只含 code/name', a
   const wallOf = async () => (await api('GET', '/users/me/badges', { token: h.token })).body.data.badges;
   const wall = await wallOf();
   assert.ok(wall.find((x) => x.code === 'fullhouse').earned && wall.find((x) => x.code === 'fullhouse').awarded_at);
-  // 发起人在自己的笔谈里发言不计破冰
+  // 发起人在自己的讨论里发言不计破冰
   await send(h, id, '主人发言');
   assert.equal((await wallOf()).find((x) => x.code === 'icebreaker').earned, false);
   assert.equal(await count("SELECT COUNT(*) AS n FROM user_badge WHERE user_id = ? AND badge_code = 'icebreaker'", [h.id]), 0);

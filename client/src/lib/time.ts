@@ -20,9 +20,14 @@ export function formatDate(iso: string, now = new Date()): string {
   return d.getFullYear() === now.getFullYear() ? md : `${d.getFullYear()} 年 ${md}`;
 }
 
+export function isoDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function fullTime(iso: string): string {
   const d = new Date(iso);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${isoDate(iso)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function clock(iso: string): string {
@@ -44,4 +49,15 @@ export function dayLabel(iso: string, now = new Date()): string {
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   if (sameDay(d, yesterday)) return '昨天';
   return `${formatDate(iso, now)} · ${WEEKDAYS[d.getDay()]}`;
+}
+
+// 发言时间：刚刚 / N 分钟前 / N 小时前（当天）/ 昨天 / 日期
+export function ago(iso: string, now = new Date()): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const diff = now.getTime() - d.getTime();
+  if (diff < 60_000) return '刚刚';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (sameDay(d, now)) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  return formatTime(iso, now);
 }

@@ -3,6 +3,7 @@ import { AppError } from '../errors.js';
 import { STATUS_NAME } from './discussion.js';
 import { markdownToText } from './markdown.js';
 import { ancestorsOf, buildIndex, childrenOf, planCreate, planDelete, planMove, planPromote, preorder } from './tree.js';
+import { listNoteTags, tagsForNotes } from './tags.js';
 
 export const ACTIVE = 1;
 export const DELETED = 2;
@@ -10,9 +11,20 @@ export const EXCERPT_LENGTH = 80;
 
 export const noteNotFound = () => new AppError(404, 'NOTE_NOT_FOUND', '无权访问或不存在');
 
-const DETAIL_COLUMNS = 'id, parent_id, title, quote, content, created_at, updated_at';
+const DETAIL_COLUMNS = 'id, parent_id, title, quote, content, kind, visibility, shared_at, created_at, updated_at';
+
+const KIND_CODE = { viewpoint: 1, question: 2, summary: 3 };
+const KIND_NAME = { 1: 'viewpoint', 2: 'question', 3: 'summary' };
+export const kindName = (code) => KIND_NAME[code] ?? null;
+const kindCode = (name) => KIND_CODE[name] ?? null;
 
 const brief = (n) => ({ id: n.id, title: n.title });
+
+const DISCUSSION_FILTER = {
+  active: 'd.status = 1',
+  ended: 'd.status IN (2, 3)',
+  none: 'd.id IS NULL',
+};
 
 function clip(text) {
   const chars = [...text];
@@ -57,7 +69,7 @@ async function applyMoves(conn, userId, moves) {
   }
 }
 
-export async function listNotes(userId, { q, page, pageSize }) {
+export async function listNotes(userId, { q, page, pageSize, tag, kind, discussion, sort = 'updated' }) {
   const where = ['n.user_id = ?', 'n.status = ?'];
   const params = [userId, ACTIVE];
   if (q) {
@@ -65,21 +77,36 @@ export async function listNotes(userId, { q, page, pageSize }) {
     where.push('(n.title LIKE ? OR n.quote LIKE ? OR n.content_text LIKE ?)');
     params.push(like, like, like);
   }
-  const [[rows], index] = await Promise.all([
+  if (tag) {
+    where.push('EXISTS (SELECT 1 FROM note_tag nt WHERE nt.note_id = n.id AND nt.tag_id = ?)');
+    params.push(tag);
+  }
+  if (kind) {
+    where.push('n.kind = ?');
+    params.push(kindCode(kind));
+  }
+  if (discussion) where.push(DISCUSSION_FILTER[discussion]);
+  const order = sort === 'created' ? 'n.created_at DESC, n.id DESC' : 'n.updated_at DESC, n.id DESC';
+  const [[rows], [countRows], index] = await Promise.all([
     pool.query(
-      `SELECT n.id, n.parent_id, n.title,
+      `SELECT n.id, n.parent_id, n.title, n.kind,
               LEFT(n.content_text, ${EXCERPT_LENGTH + 1}) AS content_head,
               LEFT(n.quote, ${EXCERPT_LENGTH * 4}) AS quote_head,
-              n.created_at, n.updated_at, d.status AS discussion_status
+              CHAR_LENGTH(REGEXP_REPLACE(n.content_text, '[[:space:]]+', '')) AS content_length,
+              n.created_at, n.updated_at, d.status AS discussion_status,
+              (SELECT COUNT(*) FROM message m WHERE m.discussion_id = d.id) AS message_count,
+              (SELECT COUNT(*) FROM note_like nl WHERE nl.note_id = n.id) AS like_count
          FROM note n
          LEFT JOIN discussion d ON d.note_id = n.id
         WHERE ${where.join(' AND ')}
-        ORDER BY n.updated_at DESC, n.id DESC
+        ORDER BY ${order}
         LIMIT ? OFFSET ?`,
       [...params, pageSize + 1, (page - 1) * pageSize],
     ),
+    pool.query(`SELECT COUNT(*) AS n FROM note n LEFT JOIN discussion d ON d.note_id = n.id WHERE ${where.join(' AND ')}`, params),
     loadIndex(pool, userId),
   ]);
+  const tagMap = await tagsForNotes(rows.slice(0, pageSize).map((r) => r.id));
   return {
     items: rows.slice(0, pageSize).map((row) => {
       const ancestors = ancestorsOf(index, row.id);
@@ -87,16 +114,23 @@ export async function listNotes(userId, { q, page, pageSize }) {
         id: row.id,
         parent_id: row.parent_id,
         title: row.title,
+        kind: kindName(row.kind),
         ...excerptOf(row),
         depth: ancestors.length,
         ...(q ? { path: ancestors.map(brief) } : {}),
+        child_count: childrenOf(index, row.id).length,
+        content_length: Number(row.content_length ?? 0),
         discussion_status: STATUS_NAME[row.discussion_status] ?? null,
+        message_count: Number(row.message_count),
+        like_count: Number(row.like_count),
+        tags: tagMap.get(row.id) ?? [],
         created_at: row.created_at,
         updated_at: row.updated_at,
       };
     }),
     page,
     page_size: pageSize,
+    total: Number(countRows[0].n),
     has_more: rows.length > pageSize,
   };
 }
@@ -126,7 +160,7 @@ async function findOwnRow(userId, id, conn = pool) {
 }
 
 export async function getNote(userId, id) {
-  const [row, index] = await Promise.all([findOwnRow(userId, id), loadIndex(pool, userId)]);
+  const [row, index, tags] = await Promise.all([findOwnRow(userId, id), loadIndex(pool, userId), listNoteTags(userId, id)]);
   if (!row || !index.byId.has(row.id)) throw noteNotFound();
   const ancestors = ancestorsOf(index, row.id);
   return {
@@ -135,11 +169,33 @@ export async function getNote(userId, id) {
     title: row.title,
     quote: row.quote,
     content: row.content,
+    kind: kindName(row.kind),
+    visibility: row.visibility,
+    shared_at: row.shared_at,
+    tags,
     created_at: row.created_at,
     updated_at: row.updated_at,
     ancestors: ancestors.map(brief),
     children: childrenOf(index, row.id).map((c) => ({ id: c.id, title: c.title, updated_at: c.updated_at })),
   };
+}
+
+export async function setNoteVisibility(userId, id, visibility) {
+  return withTransaction(async (conn) => {
+    const [[note]] = await conn.query(
+      `SELECT visibility, shared_at FROM note
+        WHERE id = ? AND user_id = ? AND status = ? FOR UPDATE`,
+      [id, userId, ACTIVE],
+    );
+    if (!note) throw noteNotFound();
+    if (note.visibility === visibility) return { visibility: note.visibility, shared_at: note.shared_at };
+
+    // 仅分享状态变化才设置/清空分享时间；不改内容编辑时间 updated_at。
+    const sharedAt = visibility === 'friends' ? 'CURRENT_TIMESTAMP(3)' : 'NULL';
+    await conn.query(`UPDATE note SET visibility = ?, shared_at = ${sharedAt} WHERE id = ?`, [visibility, id]);
+    const [[row]] = await conn.query('SELECT visibility, shared_at FROM note WHERE id = ?', [id]);
+    return { visibility: row.visibility, shared_at: row.shared_at };
+  });
 }
 
 // 在调用方事务内冻结笔记与祖先链（根 → 近）；锁作者行，避免快照与结构调整交错。非本人有效笔记返回 null
@@ -157,10 +213,10 @@ export async function captureSnapshot(conn, userId, id) {
   return { note: chain.pop(), ancestors: chain };
 }
 
-async function insertNote(conn, userId, { parent_id, sort_order }, { title, quote, content }) {
+async function insertNote(conn, userId, { parent_id, sort_order }, { title, quote, content, kind }) {
   const [result] = await conn.query(
-    'INSERT INTO note (user_id, parent_id, sort_order, title, quote, content, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [userId, parent_id, sort_order, title, quote, content, markdownToText(content)],
+    'INSERT INTO note (user_id, parent_id, sort_order, title, quote, content, content_text, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [userId, parent_id, sort_order, title, quote, content, markdownToText(content), kindCode(kind)],
   );
   return result.insertId;
 }
@@ -174,16 +230,19 @@ export async function createNote(userId, input, parentId = null) {
   return getNote(userId, id);
 }
 
-export async function updateNote(userId, id, { title, quote, content }) {
+export async function updateNote(userId, id, { title, quote, content, kind }) {
   const current = await findOwnRow(userId, id);
   if (!current) throw noteNotFound();
-  if (current.title === title && current.quote === quote && current.content === content) return getNote(userId, id);
+  const code = kindCode(kind);
+  if (current.title === title && current.quote === quote && current.content === content && current.kind === code) {
+    return getNote(userId, id);
+  }
 
   // 只改内容，不动 parent_id / sort_order（编辑不变位）
   const [result] = await pool.query(
-    `UPDATE note SET title = ?, quote = ?, content = ?, content_text = ?, updated_at = CURRENT_TIMESTAMP(3)
+    `UPDATE note SET title = ?, quote = ?, content = ?, content_text = ?, kind = ?, updated_at = CURRENT_TIMESTAMP(3)
       WHERE id = ? AND user_id = ? AND status = ?`,
-    [title, quote, content, markdownToText(content), id, userId, ACTIVE],
+    [title, quote, content, markdownToText(content), code, id, userId, ACTIVE],
   );
   if (result.affectedRows === 0) throw noteNotFound();
   return getNote(userId, id);
