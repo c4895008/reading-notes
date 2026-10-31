@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { listNotes, listTree, type DiscussionFilter, type NoteKind, type NoteRef, type NoteSummary, type TreeItem } from '../api/notes';
@@ -22,6 +22,7 @@ import {
 } from './Icons';
 import NoteFilters, { type FilterPatch, type FilterValue } from './NoteFilters';
 import { KindBadge } from './NoteKind';
+import NoteQuickSearch from './NoteQuickSearch';
 import NoteTreeView, { TREE_COLLAPSE_OVER } from './NoteTree';
 import './NotesBrowser.css';
 import '../pages/Notes.css';
@@ -202,6 +203,11 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
   const pillsRef = useRef<HTMLDivElement>(null);
 
   const back = location.pathname + location.search;
+  const prepareQuickSearch = useCallback(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    setInput(q);
+  }, [q]);
 
   useEffect(() => {
     setInput(q);
@@ -398,17 +404,20 @@ export default function NotesBrowser({ currentId = null }: { currentId?: number 
           </div>
         </div>
 
-        <label className="nb-search">
-          <SearchIcon size={17} />
-          <span className="visually-hidden">搜索笔记</span>
-          <input
-            type="search"
-            value={input}
-            maxLength={100}
-            placeholder="搜索标题、引文与正文"
-            onChange={(e) => search(e.target.value)}
-          />
-        </label>
+        <div className="nb-search-row">
+          <label className="nb-search">
+            <SearchIcon size={17} />
+            <span className="visually-hidden">搜索笔记</span>
+            <input
+              type="search"
+              value={input}
+              maxLength={100}
+              placeholder="搜索标题、引文与正文"
+              onChange={(e) => search(e.target.value)}
+            />
+          </label>
+          {/^\/notes(?:\/\d+)?$/.test(location.pathname) && location.state?.compose !== 'refine' && <NoteQuickSearch onBeforeOpen={prepareQuickSearch} />}
+        </div>
 
         {tags && tags.length > 0 && (
           <div className="nb-pills" ref={pillsRef} role="group" aria-label="按标签筛选">

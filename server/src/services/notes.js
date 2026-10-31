@@ -8,6 +8,8 @@ import { listNoteTags, tagsForNotes } from './tags.js';
 export const ACTIVE = 1;
 export const DELETED = 2;
 export const EXCERPT_LENGTH = 80;
+const SEARCH_EXCERPT_LENGTH = 160;
+const SEARCH_CONTEXT_BEFORE = 24;
 
 export const noteNotFound = () => new AppError(404, 'NOTE_NOT_FOUND', '无权访问或不存在');
 
@@ -38,6 +40,21 @@ function excerptOf(row) {
   const quote = (row.quote_head ?? '').replace(/\s+/g, ' ').trim();
   if (quote) return { excerpt: clip(quote), excerpt_source: 'quote' };
   return { excerpt: '', excerpt_source: 'none' };
+}
+
+function searchExcerptOf(row) {
+  for (const source of ['content', 'quote']) {
+    const pos = Number(row[`${source}_match_pos`]);
+    if (pos > 0) {
+      // 位置与片段均由数据库按列 collation / 码点计算；不压缩引文空白。
+      const chars = [...row[`${source}_context`]];
+      return {
+        excerpt: `${pos > SEARCH_CONTEXT_BEFORE + 1 ? '…' : ''}${chars.slice(0, SEARCH_EXCERPT_LENGTH).join('')}${chars.length > SEARCH_EXCERPT_LENGTH ? '…' : ''}`,
+        excerpt_source: source,
+      };
+    }
+  }
+  return excerptOf(row);
 }
 
 const escapeLike = (s) => s.replace(/[\\%_]/g, '\\$&');
@@ -87,11 +104,20 @@ export async function listNotes(userId, { q, page, pageSize, tag, kind, discussi
   }
   if (discussion) where.push(DISCUSSION_FILTER[discussion]);
   const order = sort === 'created' ? 'n.created_at DESC, n.id DESC' : 'n.updated_at DESC, n.id DESC';
+  const searchColumns = q
+    ? `,
+              LOCATE(?, n.content_text) AS content_match_pos,
+              SUBSTRING(n.content_text, GREATEST(1, LOCATE(?, n.content_text) - ${SEARCH_CONTEXT_BEFORE}), ${SEARCH_EXCERPT_LENGTH + 1}) AS content_context,
+              LOCATE(?, n.quote) AS quote_match_pos,
+              SUBSTRING(n.quote, GREATEST(1, LOCATE(?, n.quote) - ${SEARCH_CONTEXT_BEFORE}), ${SEARCH_EXCERPT_LENGTH + 1}) AS quote_context`
+    : '';
+  // SELECT 绑定原始搜索词，WHERE / count 仍只使用转义后的 LIKE 参数。
+  const selectParams = q ? [q, q, q, q] : [];
   const [[rows], [countRows], index] = await Promise.all([
     pool.query(
       `SELECT n.id, n.parent_id, n.title, n.kind,
               LEFT(n.content_text, ${EXCERPT_LENGTH + 1}) AS content_head,
-              LEFT(n.quote, ${EXCERPT_LENGTH * 4}) AS quote_head,
+              LEFT(n.quote, ${EXCERPT_LENGTH * 4}) AS quote_head${searchColumns},
               CHAR_LENGTH(REGEXP_REPLACE(n.content_text, '[[:space:]]+', '')) AS content_length,
               n.created_at, n.updated_at, d.status AS discussion_status,
               (SELECT COUNT(*) FROM message m WHERE m.discussion_id = d.id) AS message_count,
@@ -101,7 +127,7 @@ export async function listNotes(userId, { q, page, pageSize, tag, kind, discussi
         WHERE ${where.join(' AND ')}
         ORDER BY ${order}
         LIMIT ? OFFSET ?`,
-      [...params, pageSize + 1, (page - 1) * pageSize],
+      [...selectParams, ...params, pageSize + 1, (page - 1) * pageSize],
     ),
     pool.query(`SELECT COUNT(*) AS n FROM note n LEFT JOIN discussion d ON d.note_id = n.id WHERE ${where.join(' AND ')}`, params),
     loadIndex(pool, userId),
@@ -115,7 +141,7 @@ export async function listNotes(userId, { q, page, pageSize, tag, kind, discussi
         parent_id: row.parent_id,
         title: row.title,
         kind: kindName(row.kind),
-        ...excerptOf(row),
+        ...(q ? searchExcerptOf(row) : excerptOf(row)),
         depth: ancestors.length,
         ...(q ? { path: ancestors.map(brief) } : {}),
         child_count: childrenOf(index, row.id).length,
